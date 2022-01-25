@@ -7,6 +7,17 @@ MAX_N_NOTES = 20
 
 
 def midi_iterator(midi_list: np.array, sample_rate: int = 44100) -> List:
+    """
+    This function iterates over the messages provided by a list of midi 
+    messages. This method returns the notes played corresponding to a 
+    sample. When using enumerate, the index represents the current sample 
+    position.
+
+    :param midi_list: List of midi messages.
+    :param sample_rate: Rate of messages provided per second of audio.
+    :retruns: The active notes which have to be played. Represented in 
+    an array, where the index shows the note and 0/1 off/on.
+    """
     active_playing = np.zeros((MAX_N_NOTES,), dtype=bool)
     change_sample = 0
     current_time = 0
