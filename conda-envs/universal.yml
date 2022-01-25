@@ -1,0 +1,12 @@
+name: vst-plugin
+ 
+dependencies:
+    - python=3.9
+    - scikit-learn
+    - scipy
+    - pandas
+    - matplotlib
+    - tqdm
+    - mido
+    - pip:
+        - torch

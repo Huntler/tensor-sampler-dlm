@@ -1,0 +1,14 @@
+# remove python related files
+__pycache__
+*.pyc
+
+# remove pytorch related files (models, data)
+data/
+*.pth
+
+# any data from training, testing, evaluation, ...
+*.wav
+*.mid
+
+# file related MAC OS
+.DS_STORE
