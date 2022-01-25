@@ -37,8 +37,10 @@ def load_wave_file(file: str) -> np.array:
     """
     This function loads a WAVE file into a python array.
     :param file: The path pointing at a WAVE file.
-    :returns: Array containing the waveform. [left, right]
+    :returns: Array containing the waveform [left, right] and the 
+    duration of the wave form in seconds.
     """
     wave_file = wave.read(file)
     wave_file = np.array(wave_file[1], dtype=float)
-    return wave_file
+    time = len(wave_file) / 44100
+    return wave_file, time
