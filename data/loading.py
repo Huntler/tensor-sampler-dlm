@@ -3,6 +3,9 @@ from mido import MidiFile
 import scipy.io.wavfile as wave
 
 
+NOTE_OFFSET = 51
+
+
 def load_midi_file(file: str, sample_rate: int = 44100) -> np.array:
     """
     This function loads a MIDI file into an easier to use python array.
@@ -21,16 +24,15 @@ def load_midi_file(file: str, sample_rate: int = 44100) -> np.array:
         # we are only interested in messages containing a note
         if "note" in msg.dict().keys():
             value = 1 if msg.type == "note_on" else 0
-            midi_list.append([value, msg.note, msg.time])
+            midi_list.append([value, msg.note - NOTE_OFFSET, msg.time])
 
-    # convert the created list to a numpy array and normalise all notes
+    # convert the created list to a numpy array
     midi_list = np.asarray(midi_list, dtype=float)
-    midi_list[:, 1] = midi_list[:, 1] / np.max(midi_list[:, 1])
 
     # calculate the time in seconds by summing all messages times and
     # multiplying it by the sample rate
     time = np.sum(midi_list[:, 2], axis=0) * sample_rate
-    return midi_list, time
+    return midi_list, int(time)
 
 
 def load_wave_file(file: str) -> np.array:
