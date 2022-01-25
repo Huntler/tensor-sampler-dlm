@@ -3,7 +3,7 @@ __pycache__
 *.pyc
 
 # remove pytorch related files (models, data)
-data/
+dataset/
 *.pth
 
 # any data from training, testing, evaluation, ...
