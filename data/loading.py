@@ -1,5 +1,6 @@
 import numpy as np
 from mido import MidiFile
+import scipy.io.wavfile as wave
 
 
 def load_midi_file(file: str, sample_rate: int = 44100) -> np.array:
@@ -30,3 +31,14 @@ def load_midi_file(file: str, sample_rate: int = 44100) -> np.array:
     # multiplying it by the sample rate
     time = np.sum(midi_list[:, 2], axis=0) * sample_rate
     return midi_list, time
+
+
+def load_wave_file(file: str) -> np.array:
+    """
+    This function loads a WAVE file into a python array.
+    :param file: The path pointing at a WAVE file.
+    :returns: Array containing the waveform. [left, right]
+    """
+    wave_file = wave.read(file)
+    wave_file = np.array(wave_file[1], dtype=float)
+    return wave_file
