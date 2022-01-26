@@ -17,9 +17,9 @@ class WispyWaterfall(BaseModel):
     """
 
     def __init__(self) -> None:
-        super().__init__(rolling_window_size=256)
         now = datetime.now()
-        self._writer = SummaryWriter("runs/WispyWaterfall/" + now.strftime("%m_%d_%Y"))
+        self._writer = SummaryWriter("runs/WispyWaterfall/" + now.strftime("%d%m%Y_%H%M%S"))
+        super().__init__(rolling_window_size=256)
 
         # the model's layers, optimizers, schedulers and more
         # are defined here
