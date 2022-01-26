@@ -24,7 +24,7 @@ def midi_iterator(path: str, sample_rate: int = 44100, progress_bar: bool = True
     """
     midi_list, time = load_midi_file(path)
     def iterator():
-        active_playing = np.zeros((MAX_N_NOTES,), dtype=bool)
+        active_playing = np.zeros((MAX_N_NOTES,), dtype=np.uint8)
         change_sample = 0
         current_time = 0
 
