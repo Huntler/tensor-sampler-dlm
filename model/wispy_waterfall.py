@@ -1,6 +1,8 @@
 import torch
 from data.iterators import MAX_N_NOTES
 from model.base import BaseModel
+from datetime import datetime
+from torch.utils.tensorboard import SummaryWriter
 
 
 class WispyWaterfall(BaseModel):
@@ -13,10 +15,13 @@ class WispyWaterfall(BaseModel):
     Args:
         BaseModel (nn.Module): The base model.
     """
+
     def __init__(self) -> None:
         super().__init__(rolling_window_size=256)
+        now = datetime.now()
+        self._writer = SummaryWriter("runs/WispyWaterfall/" + now.strftime("%m_%d_%Y"))
 
-        # the model's layers, optimizers, schedulers and more 
+        # the model's layers, optimizers, schedulers and more
         # are defined here
         self._l1 = torch.nn.Linear(256 * MAX_N_NOTES, 2048)
         self._l2 = torch.nn.Linear(2048, 1024)
@@ -26,7 +31,7 @@ class WispyWaterfall(BaseModel):
 
         self._loss_fn = torch.nn.MSELoss()
         self._optim = torch.optim.AdamW(self.parameters())
-    
+
     def forward(self, x):
         x = torch.flatten(x)
 
@@ -42,4 +47,3 @@ class WispyWaterfall(BaseModel):
         x = torch.sigmoid(x)
 
         return x
-                
