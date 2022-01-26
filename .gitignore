@@ -1,6 +1,7 @@
 # remove python related files
 __pycache__
 *.pyc
+runs/
 
 # remove pytorch related files (models, data)
 dataset/
@@ -12,3 +13,6 @@ dataset/
 
 # file related MAC OS
 .DS_STORE
+
+# file realted to VS Code
+.vscode/
