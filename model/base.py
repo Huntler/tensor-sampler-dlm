@@ -159,7 +159,7 @@ class BaseModel(nn.Module):
             loss = self._loss_fn(pred_y, y)
 
             # roll the window to get a free slot and insert the new midi message
-            self.__roll_window(sample_window, midi)
+            self.__roll_window(sample_window, pred_y)
 
             # log for the statistics
             self._writer.add_scalar("Test/loss", loss, i)
