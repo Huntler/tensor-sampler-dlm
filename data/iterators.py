@@ -22,35 +22,23 @@ def midi_iterator(path: str, sample_rate: int = 44100, progress_bar: bool = True
     :retruns: The active notes which have to be played. Represented in 
     an array, where the index shows the note and 0/1 off/on.
     """
-    midi_list, time = load_midi_file(path)
+    note_register, time = load_midi_file(path)
     def iterator():
-        active_playing = np.zeros((MAX_N_NOTES,), dtype=np.uint8)
-        change_sample = 0
-        current_time = 0
+        active_playing = np.zeros((MAX_N_NOTES,), dtype=np.int)
+        
+        for sample_index in range(0, time):
+            # get notes, if their start time matches the current time
+            notes = note_register.get(sample_index, [])
 
-        # iterate over all midi messages left
-        i = 0
-        while i != len(midi_list):
-            # process the midi information
-            sample_length = int(midi_list[i][2] * sample_rate)
-            value = int(midi_list[i][0])
-            note = int(midi_list[i][1])
-
-            # if the time has not changed, then apply the midi messages
-            # to the active_playing notes
-            if change_sample == sample_length:
-                change_sample = 0
-                active_playing[note] = value
-                i += 1
-                continue
-
-            # there is a time change, so return all activate notes
-            for j in range(0, sample_length):
-                yield active_playing
-
-            # update the change_sample and reduce the index
-            change_sample = int(midi_list[i][2] * sample_rate)
-            current_time += midi_list[i][2]
+            # then iterate of the notes and add those to the active playing array
+            for delta_time, note_index, start_time in notes:
+                active_playing[note_index] = delta_time
+            
+            yield active_playing
+            
+            # only lower the times of notes that are played
+            # not the fastest but effective
+            active_playing[active_playing > 0] -= 1
     
     # show a progress bar using tqdm if wanted
     if progress_bar:
