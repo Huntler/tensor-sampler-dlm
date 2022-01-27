@@ -1,9 +1,8 @@
+from typing import List, Tuple
 import numpy as np
 from torch import nn
 import torch
 from torch.utils.tensorboard import SummaryWriter
-
-from data.iterators import MAX_N_NOTES
 
 
 class BaseModel(nn.Module):
@@ -14,6 +13,7 @@ class BaseModel(nn.Module):
         """
         super(BaseModel, self).__init__()
 
+        self._n_channels = 2
         self._rws = rolling_window_size
         if not self._writer:
             self._writer = SummaryWriter()
@@ -32,35 +32,58 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError
 
-    def __create_midi_sample_window(self) -> np.array:
+    def __create_sample_window(self) -> torch.tensor:
         """
-        This method created the window holder in which a sequence of midi notes
+        This method created the window holder in which a sequence of samples
         were stored. This is used as an input for training, so this sequence is used
         to calculated the waveform output.
 
         Returns:
-            np.array: The window.
+            torch.tensor: The window.
         """
         if self._rws == 1:
-            midi_sample_window = np.expand_dims(
-                np.zeros((MAX_N_NOTES,), dtype=np.uint8))
+            sample_window = np.expand_dims(
+                np.zeros((self._n_channels,), dtype=np.float32))
         else:
-            midi_sample_window = np.repeat(
-                [np.zeros((MAX_N_NOTES,), dtype=np.uint8)], self._rws, axis=0)
+            sample_window = np.repeat(
+                [np.zeros((self._n_channels,), dtype=np.float32)], self._rws, axis=0)
         
-        return midi_sample_window
+        return torch.from_numpy(sample_window)
 
-    def __roll_window(self, window: np.array, to_append: np.array) -> None:
+    def __roll_window(self, window: torch.tensor, to_append: torch.tensor) -> torch.tensor:
         """
         This method rolls a given window by one element and filles the given 
         element to the empty slot at the end.
 
         Args:
-            window (np.array): The window which is going to be rolled.
-            to_append (np.array): The element inserted at the free slot.
+            window (torch.tensor): The window which is going to be rolled.
+            to_append (torch.tensor): The element inserted at the free slot.
+
+        Returns:
+            Tuple: A tensor of the updated window.
         """
-        window[:-1] = window[1:]
-        window[-1] = to_append
+        window = torch.cat((window[1:], torch.unsqueeze(to_append, 0)), 0)
+    
+    def __to_tensors(self, window: torch.tensor, midi: List, sample: List) -> Tuple:
+        """This method creates the tensors out of our input and expected output data. Also, this 
+        method flattens and concatenates the window and midi input.
+
+        Args:
+            window (torch.tensor): The window containing the previous predicted samples.
+            midi (List): The current notes to play.
+            sample (List): The sample which is expected.
+
+        Returns:
+            Tuple: A tuple contain X and y as tensors.
+        """
+
+        torch_sample_window = torch.flatten(window)
+        torch_midi = torch.from_numpy(midi)
+
+        X = torch.cat((torch_midi, torch_sample_window), 0).float()
+        y = torch.from_numpy(sample).float()
+
+        return X, y
 
     def learn(self, midi_iterator, sample_list, epochs: int = 1):
         """
@@ -77,26 +100,25 @@ class BaseModel(nn.Module):
         for e in range(0, epochs):
             # define the amount of midi message we are looking at when predicting the
             # upcomming wave form sample
-            midi_sample_window = self.__create_midi_sample_window()
+            sample_window = self.__create_sample_window()
 
             # run over all midi samples generated and connect those with
             # the corresponding wave form sample
             for i, midi in enumerate(midi_iterator):
-                # roll the window to get a free slot and insert the new midi message
-                self.__roll_window(midi_sample_window, midi)
-
                 # convert the the window and sample to a torch so it can
                 # be passed into our model. Also, consider the device it is
                 # running on
-                X = torch.from_numpy(midi_sample_window).float()
-                y = torch.from_numpy(sample_list[i])
+                X, y = self.__to_tensors(sample_window, midi, sample_list[i])
 
                 # perform the presiction and measure the loss between the prediction
                 # and the expected output
                 pred_y = self(X)
-                loss = self._loss_fn(pred_y, y)
+
+                # roll the window to get a free slot and insert the new sample calculated
+                self.__roll_window(sample_window, pred_y)
 
                 # calculate the gradient using backpropagation of the loss
+                loss = self._loss_fn(pred_y, y)
                 self._optim.zero_grad
                 loss.backward()
                 self._optim.step()
@@ -121,24 +143,23 @@ class BaseModel(nn.Module):
 
         # define the amount of midi message we are looking at when predicting the
         # upcomming wave form sample
-        midi_sample_window = self.__create_midi_sample_window()
+        sample_window = self.__create_sample_window()
 
         # run over all midi samples generated and connect those with
         # the corresponding wave form sample
         for i, midi in enumerate(midi_iterator):
-            # roll the window to get a free slot and insert the new midi message
-            self.__roll_window(midi_sample_window, midi)
-
             # convert the the window and sample to a torch so it can
             # be passed into our model. Also, consider the device it is
             # running on
-            X = torch.from_numpy(midi_sample_window).float()
-            y = torch.from_numpy(sample_list[i])
+            X, y = self.__to_tensors(sample_window, midi, sample_list[i])
 
             # perform the presiction and measure the loss between the prediction
             # and the expected output
             pred_y = self(X)
             loss = self._loss_fn(pred_y, y)
+
+            # roll the window to get a free slot and insert the new midi message
+            self.__roll_window(sample_window, midi)
 
             # log for the statistics
             self._writer.add_scalar("Test/loss", loss, i)

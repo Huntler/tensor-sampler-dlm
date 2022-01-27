@@ -21,9 +21,11 @@ class WispyWaterfall(BaseModel):
         self._writer = SummaryWriter("runs/WispyWaterfall/" + now.strftime("%d%m%Y_%H%M%S"))
         super().__init__(rolling_window_size=256)
 
+        sample_window_size_flattened = self._rws * self._n_channels
+
         # the model's layers, optimizers, schedulers and more
         # are defined here
-        self._l1 = torch.nn.Linear(256 * MAX_N_NOTES, 2048)
+        self._l1 = torch.nn.Linear(sample_window_size_flattened + MAX_N_NOTES, 2048)
         self._l2 = torch.nn.Linear(2048, 1024)
         self._l3 = torch.nn.Linear(1024, 256)
         self._l4 = torch.nn.Linear(256, 32)
