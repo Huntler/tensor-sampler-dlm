@@ -8,8 +8,10 @@ dependencies:
     - matplotlib
     - tqdm
     - mido
+    - ipython
     - pip:
         - torch
+        - torchaudio
         - tensorboard
         # downgrade because of pytorch bug
         - setuptools==59.5.0
