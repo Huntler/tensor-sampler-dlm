@@ -18,6 +18,16 @@ class BaseModel(nn.Module):
         if not self._writer:
             self._writer = SummaryWriter()
 
+        # check for gpu
+        self.__device = "cpu"
+        if torch.cuda.is_available():
+            self.__device_name = torch.cuda.get_device_name(0)
+            print(f"GPU acceleration available on {self.__device_name}")
+    
+    def use_device(self, device: str) -> None:
+        self.__device = device
+        self.to(self.__device)
+
     def forward(self, x):
         """
         This method performs the forward call on the neural network 
@@ -48,7 +58,7 @@ class BaseModel(nn.Module):
             sample_window = np.repeat(
                 [np.zeros((self._n_channels,), dtype=np.float32)], self._rws, axis=0)
         
-        return torch.from_numpy(sample_window)
+        return torch.from_numpy(sample_window).to(self.__device)
 
     def __roll_window(self, window: torch.tensor, to_append: torch.tensor) -> torch.tensor:
         """
@@ -76,14 +86,9 @@ class BaseModel(nn.Module):
         Returns:
             Tuple: A tuple contain X and y as tensors.
         """
-
-        torch_sample_window = torch.flatten(window)
-        torch_midi = torch.from_numpy(midi)
-
-        X = torch.cat((torch_midi, torch_sample_window), 0).float()
-        y = torch.from_numpy(sample).float()
-
-        return X, y
+        window = window.flatten()
+        X = torch.cat((midi, window), 0)
+        return X, sample
 
     def learn(self, midi_iterator, sample_list, epochs: int = 1):
         """
@@ -96,7 +101,12 @@ class BaseModel(nn.Module):
                                  sample respectively.
             sample_list (List): The expected output given the midi as an input.
         """
-        sample_list = np.asarray(sample_list, dtype=np.float32)
+        if self.__device == "cuda":
+            print('Memory Usage:')
+            print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**3, 1), 'GB')
+            print('Cached:   ', round(torch.cuda.memory_reserved(0)/1024**3, 1), 'GB')
+
+        # sample_list = np.asarray(sample_list, dtype=np.float32)
         for e in range(0, epochs):
             # define the amount of midi message we are looking at when predicting the
             # upcomming wave form sample

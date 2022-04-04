@@ -2,6 +2,7 @@ import torch
 from data.iterators import MAX_N_NOTES
 from model.base import BaseModel
 from datetime import datetime
+import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -16,7 +17,7 @@ class WispyWaterfall(BaseModel):
         BaseModel (nn.Module): The base model.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, rolling_window_size: int=256) -> None:
         now = datetime.now()
         self._writer = SummaryWriter("runs/WispyWaterfall/" + now.strftime("%d%m%Y_%H%M%S"))
         super().__init__(rolling_window_size=256)

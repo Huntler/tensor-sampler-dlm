@@ -22,6 +22,10 @@ class MidiWaveDataset(Dataset):
         self.__active_playing = torch.tensor(np.zeros((num_notes,), dtype=np.int))
         assert self.__metadata.num_frames == len(self.__wave)
     
+    @property
+    def sample_rate(self) -> int:
+        return self.__metadata.sample_rate
+    
     def __len__(self) -> int:
         return self.__metadata.num_frames
 
