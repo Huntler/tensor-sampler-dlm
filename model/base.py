@@ -17,6 +17,7 @@ class BaseModel(nn.Module):
         self._rws = rolling_window_size
         if not self._writer:
             self._writer = SummaryWriter()
+        self.__sample_position = 0
 
         # check for gpu
         self.__device = "cpu"
@@ -101,13 +102,12 @@ class BaseModel(nn.Module):
                                  sample respectively.
             sample_list (List): The expected output given the midi as an input.
         """
-        if self.__device == "cuda":
-            print('Memory Usage:')
-            print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**3, 1), 'GB')
-            print('Cached:   ', round(torch.cuda.memory_reserved(0)/1024**3, 1), 'GB')
+        losses = []
 
         # sample_list = np.asarray(sample_list, dtype=np.float32)
         for e in range(0, epochs):
+            losses.append([])
+
             # define the amount of midi message we are looking at when predicting the
             # upcomming wave form sample
             sample_window = self.__create_sample_window()
@@ -133,8 +133,13 @@ class BaseModel(nn.Module):
                 loss.backward()
                 self._optim.step()
 
-                # log for the statistics
-                self._writer.add_scalar("Train/loss", loss, i)
+                losses[-1].append(loss.item())
+
+        # log for the statistics
+        losses = np.mean(losses, axis=0)
+        for i, loss in enumerate(losses):
+            self._writer.add_scalar("Train/loss", loss, self.__sample_position + i)
+        self.__sample_position += len(losses)
 
         self.eval()
         self._writer.flush()

@@ -7,9 +7,9 @@ dependencies:
     - pandas
     - matplotlib
     - tqdm
-    - mido
     - ipython
     - pip:
+        - mido
         - torch
         - torchaudio
         - tensorboard

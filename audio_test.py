@@ -14,8 +14,10 @@ if __name__ == '__main__':
     # create the dataset loader
     dataset = MidiWaveDataset(root_dir="dataset/train_0")
 
-    batch_size = dataset.sample_rate * 5 # seconds
+    batch_size = int(dataset.sample_rate * 2)# seconds
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8)
+    print(f"Training on {int(len(dataset) / batch_size)} batches, each {batch_size} samples " +
+          f"({batch_size / dataset.sample_rate} sec) big.")
     
     # create the DLM to use
     # define a quarter of a second as rolling window

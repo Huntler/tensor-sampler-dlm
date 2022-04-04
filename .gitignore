@@ -16,3 +16,4 @@ dataset/
 
 # file realted to VS Code
 .vscode/
+*.code-workspace
