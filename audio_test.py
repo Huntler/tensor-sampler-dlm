@@ -28,4 +28,5 @@ if __name__ == '__main__':
     for notes_active, wave_sample in tqdm(dataloader):
         notes_active, wave_sample = notes_active.to(device), wave_sample.to(device)
         model.learn(notes_active, wave_sample, epochs=2)
+        model.save_to_default()
         print("batch learned")

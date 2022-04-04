@@ -19,21 +19,28 @@ class WispyWaterfall(BaseModel):
 
     def __init__(self, rolling_window_size: int=256) -> None:
         now = datetime.now()
-        self._writer = SummaryWriter("runs/WispyWaterfall/" + now.strftime("%d%m%Y_%H%M%S"))
+        self.__tb_sub = now.strftime("%d%m%Y_%H%M%S")
+        self.__tb_path = f"runs/WispyWaterfall/{self.__tb_sub}"
+        self._writer = SummaryWriter(self.__tb_path)
         super().__init__(rolling_window_size=256)
 
         sample_window_size_flattened = self._rws * self._n_channels
 
         # the model's layers, optimizers, schedulers and more
         # are defined here
-        self._l1 = torch.nn.Linear(sample_window_size_flattened + MAX_N_NOTES, 2048)
-        self._l2 = torch.nn.Linear(2048, 1024)
-        self._l3 = torch.nn.Linear(1024, 256)
-        self._l4 = torch.nn.Linear(256, 32)
-        self._l5 = torch.nn.Linear(32, 2)
+        self._l1 = torch.nn.Linear(sample_window_size_flattened + MAX_N_NOTES, 8196)
+        self._l2 = torch.nn.Linear(8196, 4096)
+        self._l3 = torch.nn.Linear(4096, 2048)
+        self._l4 = torch.nn.Linear(2048, 512)
+        self._l5 = torch.nn.Linear(512, 2)
 
         self._loss_fn = torch.nn.MSELoss()
         self._optim = torch.optim.AdamW(self.parameters())
+
+    def save_to_default(self) -> None:
+        model_tag = datetime.now().strftime("%H%M%S")
+        params = self.state_dict()
+        torch.save(params, f"{self.__tb_path}/model_{model_tag}.torch")
 
     def forward(self, x):
         x = torch.flatten(x)

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Tuple
 import numpy as np
 from torch import nn
@@ -16,7 +17,9 @@ class BaseModel(nn.Module):
         self._n_channels = 2
         self._rws = rolling_window_size
         if not self._writer:
-            self._writer = SummaryWriter()
+            self.__tb_sub = datetime.now().strftime("%m-%d-%Y_%H%M%S")
+            self.__tb_path = f"runs/{self.__tb_sub}"
+            self._writer = SummaryWriter(self.__tb_path)
         self.__sample_position = 0
 
         # check for gpu
@@ -28,6 +31,10 @@ class BaseModel(nn.Module):
     def use_device(self, device: str) -> None:
         self.__device = device
         self.to(self.__device)
+    
+    def save_to_default(self) -> None:
+        model_tag = datetime.now().strftime("%H%M%S")
+        torch.save(self, f"{self.__tb_path}/model_{model_tag}.torch")
 
     def forward(self, x):
         """
