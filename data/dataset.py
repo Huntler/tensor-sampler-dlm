@@ -44,4 +44,4 @@ class MidiWaveDataset(Dataset):
         for delta_time, note_index, start_time in notes:
             self.__active_playing[note_index] = delta_time
         
-        return self.__active_playing, self.__wave[idx]
+        return self.__active_playing.float(), self.__wave[idx]
