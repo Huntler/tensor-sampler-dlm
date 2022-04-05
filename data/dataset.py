@@ -2,6 +2,8 @@ import torch
 from torch.utils.data import Dataset
 import torchaudio
 import numpy as np
+
+from utils.audio import print_stats
 from .loading import load_midi_file
 
 
@@ -18,6 +20,9 @@ class MidiWaveDataset(Dataset):
 
         self.__wave, self.__sample_rate = torchaudio.load(root_dir + "/output.wav")
         self.__wave = self.__wave.T
+
+        print("Expected stats:")
+        print_stats(self.__wave, self.__sample_rate)
 
         self.__active_playing = torch.tensor(np.zeros((num_notes,), dtype=np.int))
         # self.__active_playing = np.array([[torch.tensor(0)] for _ in range(num_notes)])

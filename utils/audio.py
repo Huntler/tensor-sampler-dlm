@@ -60,8 +60,6 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram", xlim=None):
 
 
 def play_audio(waveform, sample_rate):
-    waveform = waveform.numpy()
-
     num_channels, num_frames = waveform.shape
     if num_channels == 1:
         display(Audio(waveform[0], rate=sample_rate))

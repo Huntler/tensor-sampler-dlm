@@ -3,11 +3,14 @@ import numpy as np
 
 import torch
 from data.dataset import MidiWaveDataset
-from utils.audio import plot_specgram, plot_waveform, print_stats
+from model.crispy_cranberry import CrispyCranberry
+from utils.audio import play_audio, plot_specgram, plot_waveform, print_stats
 from model.wispy_waterfall import WispyWaterfall
 from torch.utils.data import DataLoader
 from multiprocessing.spawn import freeze_support
 from tqdm import tqdm
+
+# FIXME: check if inout waveform is normalized (transforms.Compose; transforms.Normalize)
 
 def train_mode():
     freeze_support()
@@ -15,30 +18,32 @@ def train_mode():
 
     # create the dataset loader
     dataset = MidiWaveDataset(root_dir="dataset/train_0")
-    batch_size = int(dataset.sample_rate * 1)# seconds
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8)
+    batch_size = int(dataset.sample_rate * 1) # seconds
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=2)
     print(f"Training on {int(len(dataset) / batch_size)} batches, each {batch_size} samples " +
           f"({batch_size / dataset.sample_rate} sec) big.")
+
     
     # create the DLM to use
-    model = WispyWaterfall()
+    model = CrispyCranberry()
     model.use_device(device)
 
     # train the model
-    for notes_active, wave_sample in tqdm(dataloader):
-        notes_active, wave_sample = notes_active.to(device), wave_sample.to(device)
-        model.learn(notes_active, wave_sample, epochs=1)
+    for epoch in range(1):
+        for notes_active, wave_sample in tqdm(dataloader):
+            notes_active, wave_sample = notes_active.to(device), wave_sample.to(device)
+            model.learn(notes_active, wave_sample, epochs=1)
     
     model.save_to_default()
 
 def load_mode(path):
     # load the model given the path
-    model = WispyWaterfall(log=False)
+    model = CrispyCranberry(log=False)
     model.load(path)
 
     # create the test dataset and execute the model on it
     dataset = MidiWaveDataset(root_dir="dataset/train_1")
-    batch_size = int(dataset.sample_rate * 2)# seconds
+    batch_size = int(dataset.sample_rate * 1)# seconds
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8)
 
     # predict the waveform
@@ -51,9 +56,13 @@ def load_mode(path):
     wave = np.array(wave).T
     print_stats(wave, dataset.sample_rate)
     plot_waveform(wave, dataset.sample_rate)
+    play_audio(wave, dataset.sample_rate)
+
+    import scipy.io.wavfile
+    scipy.io.wavfile.write("train_1.wav", dataset.sample_rate, wave.T)
+
 
 # how to use the dataset MidiWave dataset
-# FIXME: rolling window not needed if LSTM are used (NN knows previous behaviour)
 # FIXME: remove data/iterators.py afterwards
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train or load a VST Tensor-Sample DLM.")
