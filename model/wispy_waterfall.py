@@ -33,7 +33,7 @@ class WispyWaterfall(BaseModel):
 
         # the model's layers, optimizers, schedulers and more
         # are defined here
-        self._l1 = torch.nn.Linear(MAX_N_NOTES, 2048)
+        self._l1 = torch.nn.Linear(20, 2048)
         self._l2 = torch.nn.Linear(2048, 1024)
         self._l3 = torch.nn.Linear(1024, 512)
         self._l4 = torch.nn.Linear(512, 256)
@@ -52,8 +52,6 @@ class WispyWaterfall(BaseModel):
         self.eval()
 
     def forward(self, x):
-        x = torch.flatten(x)
-
         x = self._l1(x)
         x = torch.relu(x)
         x = self._l2(x)

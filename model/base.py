@@ -64,17 +64,14 @@ class BaseModel(nn.Module):
         losses = []
 
         X = midi
-        #FIXME: get batches working
-        print(X[0])
         y = sample_list
         for e in range(0, epochs):
-
             # perform the presiction and measure the loss between the prediction
             # and the expected output
             pred_y = self(X)
 
             # calculate the gradient using backpropagation of the loss
-            loss = self._loss_fn(pred_y, y[i])
+            loss = self._loss_fn(pred_y, y)
             self._optim.zero_grad
             loss.backward()
             self._optim.step()
@@ -83,18 +80,17 @@ class BaseModel(nn.Module):
 
         # log for the statistics
         losses = np.mean(losses, axis=0)
-        for i, loss in enumerate(losses):
-            self._writer.add_scalar("Train/loss", loss, self.__sample_position + i)
-        self.__sample_position += len(losses)
+        self._writer.add_scalar("Train/loss", loss, self.__sample_position)
+        self.__sample_position += len(X)
 
         self.eval()
         self._writer.flush()
     
-    def predict(self, midi_iterator) -> List:
+    def predict(self, midi) -> List:
         out = []
+        X = midi
         with torch.no_grad():
-            for i, X in enumerate(midi_iterator):
-                pred_y = self(X)
-                out.append(pred_y)
+            pred_y = self(X)
+            out += pred_y
         
         return out

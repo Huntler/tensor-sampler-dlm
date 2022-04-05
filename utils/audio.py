@@ -22,7 +22,7 @@ def print_stats(waveform, sample_rate=None, src=None):
 
 
 def plot_waveform(waveform, sample_rate, title="Waveform", xlim=None, ylim=None):
-    waveform = waveform.numpy()
+    # waveform = waveform.numpy()
 
     num_channels, num_frames = waveform.shape
     time_axis = torch.arange(0, num_frames) / sample_rate
@@ -44,8 +44,6 @@ def plot_waveform(waveform, sample_rate, title="Waveform", xlim=None, ylim=None)
 
 
 def plot_specgram(waveform, sample_rate, title="Spectrogram", xlim=None):
-    waveform = waveform.numpy()
-
     num_channels, num_frames = waveform.shape
 
     figure, axes = plt.subplots(num_channels, 1)
