@@ -1,0 +1,12 @@
+model:
+  name: LittleLion
+  epochs: 1
+  batch_epochs: 1
+  batch_size_in_seconds: 1
+dataset: 
+  name: train_1
+  normalize: true
+  worker: 2 
+device: cpu
+log: true
+evaluate: None

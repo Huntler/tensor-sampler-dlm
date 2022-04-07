@@ -19,12 +19,12 @@ class LittleLion(BaseModel):
             self._writer = False
 
         super(LittleLion, self).__init__()
-        self.__n_layers = 8
-        self.__hidden_dim = 256
+        self.__n_layers = 2
+        self.__hidden_dim = 64
         self.__precision = precision
 
         self.__gru = torch.nn.GRU(
-            20, self.__hidden_dim, self.__n_layers, dropout=0.1)
+            20, self.__hidden_dim, self.__n_layers, batch_first=True, dropout=0.1)
         self.__linear_1 = torch.nn.Linear(self.__hidden_dim, 2)
 
         self._loss_fn = torch.nn.MSELoss()
@@ -43,10 +43,10 @@ class LittleLion(BaseModel):
         self.eval()
 
     def forward(self, y):
-        h = self.__init_hidden_states(batch_size=y.size(0))
+        h = self.__init_hidden_states(batch_size=1)
         output = []
 
-        for time_step in y.split(20, dim=1):
+        for time_step in y.split(1, dim=0):
             time_step = torch.unsqueeze(time_step, 0)
             x, h = self.__gru(time_step, h)
             x = torch.relu(x[0][0])

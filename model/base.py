@@ -27,6 +27,10 @@ class BaseModel(nn.Module):
             self.__device_name = torch.cuda.get_device_name(0)
             print(f"GPU acceleration available on {self.__device_name}")
 
+    @property
+    def log_path(self) -> str:
+        return self._tb_path
+
     def use_device(self, device: str) -> None:
         self._device = device
         self.to(self._device)
@@ -35,6 +39,9 @@ class BaseModel(nn.Module):
         model_tag = datetime.now().strftime("%H%M%S")
         params = self.state_dict()
         torch.save(params, f"{self._tb_path}/model_{model_tag}.torch")
+    
+    def load(self, path) -> None:
+        raise NotImplementedError()
 
     def forward(self, x):
         """

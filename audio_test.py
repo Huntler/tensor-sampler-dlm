@@ -1,42 +1,51 @@
 import argparse
 import numpy as np
-
+import scipy.io.wavfile
 import torch
+import os
 from data.dataset import MidiWaveDataset
-from model.crispy_cranberry import CrispyCranberry
-from model.little_lion import LittleLion
+from model.base import BaseModel
 from utils.audio import play_audio, plot_specgram, plot_waveform, print_stats
-from model.wispy_waterfall import WispyWaterfall
+from utils.config import config
 from torch.utils.data import DataLoader
 from multiprocessing.spawn import freeze_support
 from tqdm import tqdm
 
+config_dict = None
 # FIXME: implement batch normalization (Lecture 2, Slide 102-103)
+# FIXME: Normalize using transformers
+# FIXME: remove data/iterators.py afterwards
+# FIXME: test it
 
 
 def train_mode():
     # define parameters
-    model_name = LittleLion
-    dataset_name = "train_0"
-    batch_size_in_seconds = 1
-    device = "cpu"
+    device = config_dict["device"]
     precision = torch.float16 if device == "cuda" else torch.float32
-    epochs = 1
 
     freeze_support()
 
     # create the dataset loader
-    dataset = MidiWaveDataset(root_dir=f"dataset/{dataset_name}", precision=precision)
-    batch_size = int(dataset.sample_rate * batch_size_in_seconds)  # seconds
+    dataset_name = config_dict["dataset"]["name"]
+    dataset = MidiWaveDataset(
+        root_dir=f"dataset/{dataset_name}", precision=precision)
+    batch_size = int(dataset.sample_rate *
+                     config_dict["model"]["batch_size_in_seconds"])
 
-    # FIXME: Normalize using transformers
     dataloader = DataLoader(dataset, batch_size=batch_size,
-                            shuffle=False, num_workers=2)
+                            shuffle=False, num_workers=config_dict["dataset"]["worker"])
     print(f"Training on {int(len(dataset) / batch_size)} batches, each {batch_size} samples " +
           f"({batch_size / dataset.sample_rate} sec) big.")
 
+    # create the model and train it, if epochs > 0
+    epochs = config_dict["model"]["epochs"]
+    if epochs == 0:
+        return
+
     # create the DLM to use
-    model = model_name(precision=precision)
+    model_class = config.get_model(name=config_dict["model"]["name"])
+    model: BaseModel = model_class(precision=precision)
+    config_dict["evaluation"] = model.log_path
     model.use_device(device)
 
     # train the model
@@ -49,16 +58,30 @@ def train_mode():
     model.save_to_default()
 
 
-def load_mode(path):
+def load_mode():
     # load the model given the path
-    model = CrispyCranberry(log=False)
+    path = []
+    root_folder = config_dict["evaluation"]  
+    for file in os.listdir(root_folder):
+        if ".torch" in file:
+            path.append(file)
+    if len(path) == 0:
+        print("No model to evaluate.")
+
+    
+    path = f"{root_folder}/{max(path)}"
+
+    precision = torch.float16 if config_dict["device"] == "cuda" else torch.float32
+    model_class = config.get_model(name=config_dict["model"]["name"])
+    model: BaseModel = model_class(precision=precision, log=False)
     model.load(path)
 
     # create the test dataset and execute the model on it
-    dataset = MidiWaveDataset(root_dir="dataset/train_1")
-    batch_size = int(dataset.sample_rate * 1)  # seconds
+    dataset_name = config_dict["dataset"]["name"]
+    dataset = MidiWaveDataset(root_dir=f"dataset/{dataset_name}", precision=precision)
+    batch_size = int(dataset.sample_rate * config_dict["model"]["batch_size_in_seconds"])  # seconds
     dataloader = DataLoader(dataset, batch_size=batch_size,
-                            shuffle=False, num_workers=8)
+                            shuffle=False, num_workers=config_dict["dataset"]["worker"])
 
     # predict the waveform
     wave = []
@@ -68,27 +91,24 @@ def load_mode(path):
             wave.append(sample.numpy())
 
     wave = np.array(wave).T
-    print_stats(wave, dataset.sample_rate)
-    plot_waveform(wave, dataset.sample_rate)
-    play_audio(wave, dataset.sample_rate)
-
-    import scipy.io.wavfile
-    scipy.io.wavfile.write("train_1.wav", dataset.sample_rate, wave.T)
+    print(wave, wave.shape)
+    scipy.io.wavfile.write(f"{root_folder}/{dataset_name}.wav", dataset.sample_rate, wave.T)
 
 
 # how to use the dataset MidiWave dataset
-# FIXME: remove data/iterators.py afterwards
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Train or load a VST Tensor-Sample DLM.")
-    parser.add_argument("--train", action='store_true', default=False,
-                        dest="train", help="Enables the training mode.")
-    parser.add_argument("--load", dest="load",
-                        help="Loads a trained model, given the model's path.")
+    parser.add_argument("--config", dest="config",
+                        help="Configuration of the model.")
     args = parser.parse_args()
 
-    if args.train:
-        train_mode()
+    # load arguments and start training
+    config_dict = config.get_args(args.config)
+    train_mode()
 
-    if args.load:
-        load_mode(args.load)
+    # move config file to log folder and execute the training mode
+    log_path = config_dict["evaluation"]
+    if log_path:
+        config.store_args(f"{log_path}/config.yml", config_dict)
+        load_mode()

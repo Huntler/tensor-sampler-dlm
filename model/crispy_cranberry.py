@@ -34,14 +34,12 @@ class CrispyCranberry(BaseModel):
 
         # the model's layers, optimizers, schedulers and more
         # are defined here
-        self.__hidden_dim = 32
+        self.__hidden_dim = 64
         self.__precision = precision
 
         # lstm1, lstm2, linear are all layers in the network
         self.lstm1 = torch.nn.LSTMCell(
             20, self.__hidden_dim, dtype=self.__precision)
-        self.lstm2 = torch.nn.LSTMCell(
-            self.__hidden_dim, self.__hidden_dim, dtype=self.__precision)
         self.linear = torch.nn.Linear(
             self.__hidden_dim, 2, dtype=self.__precision)
 
@@ -65,22 +63,18 @@ class CrispyCranberry(BaseModel):
         self.eval()
 
     def forward(self, y):
-        outputs, n_samples = [], y.size(0)
+        outputs, n_samples = [], 1
 
         h_t, c_t = self.__init_hidden_states(n_samples)
-        h_t2, c_t2 = self.__init_hidden_states(n_samples)
 
-        for time_step in y.split(20, dim=1):
+        for time_step in y.split(1, dim=0):
             # initial hidden and cell states
             h_t, _ = self.lstm1(time_step, (h_t, c_t))
 
-            # new hidden and cell states
-            h_t2, _ = self.lstm2(h_t, (h_t2, c_t2))
-
             # output from the last layer
-            output = self.linear(h_t2)
+            output = self.linear(h_t)
             outputs.append(torch.tanh(output))
 
         # transform list to tensor
-        outputs = torch.cat(outputs, dim=1)
+        outputs = torch.cat(outputs, dim=0)
         return outputs
