@@ -42,7 +42,7 @@ def load_midi_file(file: str, sample_rate: int = 44100) -> Tuple:
                 start_time = int(time_register[msg.note - NOTE_OFFSET] * sample_rate)
 
                 # then add the note to the note register to group notes which share the same start time
-                note = (delta_time, msg.note - NOTE_OFFSET, start_time)
+                note = (delta_time, int(msg.note - NOTE_OFFSET), start_time)
                 note_list = note_register.get(start_time, [])
                 note_list.append(note)
                 note_register[start_time] = note_list

@@ -17,23 +17,24 @@ class BaseModel(nn.Module):
         self._n_channels = 2
         if self._writer is None:
             self.__tb_sub = datetime.now().strftime("%m-%d-%Y_%H%M%S")
-            self.__tb_path = f"runs/{self.__tb_sub}"
-            self._writer = SummaryWriter(self.__tb_path)
+            self._tb_path = f"runs/{self.__tb_sub}"
+            self._writer = SummaryWriter(self._tb_path)
         self.__sample_position = 0
 
         # check for gpu
-        self.__device = "cpu"
+        self._device = "cpu"
         if torch.cuda.is_available():
             self.__device_name = torch.cuda.get_device_name(0)
             print(f"GPU acceleration available on {self.__device_name}")
-    
+
     def use_device(self, device: str) -> None:
-        self.__device = device
-        self.to(self.__device)
-    
+        self._device = device
+        self.to(self._device)
+
     def save_to_default(self) -> None:
         model_tag = datetime.now().strftime("%H%M%S")
-        torch.save(self, f"{self.__tb_path}/model_{model_tag}.torch")
+        params = self.state_dict()
+        torch.save(params, f"{self._tb_path}/model_{model_tag}.torch")
 
     def forward(self, x):
         """
@@ -66,12 +67,14 @@ class BaseModel(nn.Module):
         X = midi
         y = sample_list
         for e in range(0, epochs):
-            # perform the presiction and measure the loss between the prediction
-            # and the expected output
-            pred_y = self(X)
+            with torch.cuda.amp.autocast(enabled=(self._device == "cuda")):
+                # perform the presiction and measure the loss between the prediction
+                # and the expected output
+                pred_y = self(X)
 
-            # calculate the gradient using backpropagation of the loss
-            loss = self._loss_fn(pred_y, y)
+                # calculate the gradient using backpropagation of the loss
+                loss = self._loss_fn(pred_y, y)
+
             self._optim.zero_grad
             loss.backward()
             self._optim.step()
@@ -85,12 +88,12 @@ class BaseModel(nn.Module):
 
         self.eval()
         self._writer.flush()
-    
+
     def predict(self, midi) -> List:
         out = []
         X = midi
         with torch.no_grad():
             pred_y = self(X)
             out += pred_y
-        
+
         return out
