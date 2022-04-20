@@ -2,9 +2,7 @@ from typing import Dict
 import yaml
 
 from model.base import BaseModel
-from model.crispy_cranberry import CrispyCranberry
-from model.little_lion import LittleLion
-from model.wispy_waterfall import WispyWaterfall
+from model.mlp_model import MlpModel
 
 
 class Config:
@@ -50,6 +48,4 @@ class Config:
 
 
 config = Config()
-config.register_model("LittleLion", LittleLion)
-config.register_model("CrispyCranberry", CrispyCranberry)
-config.register_model("WispyWaterfall", WispyWaterfall)
+config.register_model("MlpModel", MlpModel)
