@@ -1,9 +1,15 @@
+import contextlib
 from datetime import datetime
 from typing import List, Tuple
 import numpy as np
 from torch import nn
 import torch
 from torch.utils.tensorboard import SummaryWriter
+
+
+@contextlib.contextmanager
+def no_autocast():
+    yield None
 
 
 class BaseModel(nn.Module):
@@ -27,6 +33,12 @@ class BaseModel(nn.Module):
             self.__device_name = torch.cuda.get_device_name(0)
             print(f"GPU acceleration available on {self.__device_name}")
 
+        self._loss_fn = None
+        self._optim = None
+
+        # for prediction
+        self._cache = None
+
     @property
     def log_path(self) -> str:
         return self._tb_path
@@ -43,6 +55,9 @@ class BaseModel(nn.Module):
     def load(self, path) -> None:
         raise NotImplementedError()
 
+    def reset_cache(self) -> None:
+        raise NotImplementedError()
+
     def forward(self, x):
         """
         This method performs the forward call on the neural network 
@@ -57,7 +72,7 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError
 
-    def learn(self, midi, sample_list, epochs: int = 1):
+    def learn(self, X, y, epochs: int = 1):
         """
         This method is used to train the model based on the given input
         data.
@@ -68,13 +83,14 @@ class BaseModel(nn.Module):
                                  sample respectively.
             sample_list (List): The expected output given the midi as an input.
         """
+        assert self._loss_fn != None
+        assert self._optim != None
+
         # measure history
         losses = []
 
-        X = midi
-        y = sample_list
         for e in range(0, epochs):
-            with torch.cuda.amp.autocast(enabled=(self._device == "cuda")):
+            with torch.cuda.amp.autocast() if self._device == "cuda" else no_autocast():
                 # perform the presiction and measure the loss between the prediction
                 # and the expected output
                 pred_y = self(X)
@@ -82,7 +98,7 @@ class BaseModel(nn.Module):
                 # calculate the gradient using backpropagation of the loss
                 loss = self._loss_fn(pred_y, y)
 
-            self._optim.zero_grad
+            self._optim.zero_grad()
             loss.backward()
             self._optim.step()
 
@@ -97,10 +113,12 @@ class BaseModel(nn.Module):
         self._writer.flush()
 
     def predict(self, midi) -> List:
-        out = []
-        X = midi
-        with torch.no_grad():
-            pred_y = self(X)
-            out += pred_y
+        assert self._cache != None
 
-        return out
+        with torch.no_grad():
+            sample = self((midi, self._cache))
+
+            self._cache = torch.roll(self._cache, -1)
+            self._cache[-1, :] = sample
+
+        return sample.numpy()
