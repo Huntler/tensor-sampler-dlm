@@ -6,7 +6,6 @@ import numpy as np
 from mido import MidiFile
 
 
-@DeprecationWarning
 class MidiWaveDataset(Dataset):
     def __init__(self, root_dir: str, dimension: int = 20, note_offset: int = 0,
                  sequence_length: int = 64, device: str = "cpu",
@@ -85,36 +84,78 @@ class MidiWaveDataset(Dataset):
         return self._total_time - self._sqeuence_length
     
     def __getitem__(self, index) -> Tuple[np.array, np.array]:
-        # generate the sequences
-        midi_seq = np.zeros((self._sqeuence_length, self._dimension))
-        wave_seq = self._wave[index]
-
-        # speed up the process
+        # get the end index of our sequence
         end_index = index + self._sqeuence_length
-        seq_time_index = 0
 
-        # get the sequence
-        for seq_index in range(index, end_index):
-            for time_index, start_time in enumerate(self._start_times[seq_time_index:]):
-                time_index += seq_time_index
-                # if the start_time of an midi message gets greater than the index, then
-                # we will not find one which is lower (array was sorted before)
-                if start_time > seq_index:
-                    break
+        # generate the sequences
+        midi_seq = None
+        wave_seq = self._wave[index:end_index, :]
+        wave_sample = self._wave[index]
 
-                # there is no midi message after this one, we are at the end
-                if len(self._start_times) <= time_index:
-                    midi_seq[-(index - seq_index), :] = self._midi_track[start_time]
-                    seq_time_index = time_index
-                    break
+        # get the end index of our sequence
+        end_index = index + self._sqeuence_length
 
-                # if the following message's start time is bigger than the index, we can safely
-                # add the current message to the sequence
-                if self._start_times[time_index + 1] >= seq_index:
-                    midi_seq[-(index - seq_index), :] = self._midi_track[start_time]
-                    seq_time_index = time_index
-                    break
-        
-        X = (np.array(midi_seq), np.array(self._wave[index:end_index, :]))
-        return X, wave_seq
+        # find the start time index to get the correct notes for the current index
+        for time_index, start_time in enumerate(self._start_times):
+            # at the end of our midi file, add all notes to our midi_seq
+            if len(self._start_times) <= time_index:
+                # make sure to stay below the dataset's length
+                end_index = min(self._total_time, end_index)
+                midi_seq = np.repeat([self._midi_track[start_time]], self._sqeuence_length, axis=0)
+                wave_seq = self._wave[index:end_index, :]
+                break
 
+            if self._start_times[time_index + 1] < index:
+                continue
+
+            # if the sequence is fully contained in the start_time of our note, 
+            # then simply add it
+            if index > start_time and end_index < self._start_times[time_index + 1]:
+                midi_seq = np.repeat([self._midi_track[start_time]], self._sqeuence_length, axis=0)
+                break
+
+            # in this case, our output sequence includes more than one start_time
+            if index > start_time and end_index > self._start_times[time_index + 1]:
+                # create the first part of our sequence containing notes from the current 
+                # start_time
+                first_seq_length = self._start_times[time_index + 1] - index
+                midi_seq = np.repeat([self._midi_track[start_time]], first_seq_length, axis=0)
+
+                # find and create all following sub-sequences until end_index < start_time
+                i = 1
+                while end_index > self._start_times[time_index + i]:
+                    # get the sub_sequence length first, which is either the time until the next 
+                    # note gets played or the remaining sequence length
+                    sub_seq_length = self._start_times[time_index + i] - self._start_times[time_index]
+                    sub_seq_length = min(self._sqeuence_length - first_seq_length, sub_seq_length)
+
+                    sub_seq = np.repeat([self._midi_track[start_time]], sub_seq_length, axis=0)
+                    midi_seq = np.vstack((midi_seq, sub_seq))
+                    i += 1
+
+                break
+
+        X = (np.array(midi_seq), np.array(wave_seq))
+        return X, wave_sample
+
+
+
+if __name__ == '__main__':
+    from torch.utils.data import DataLoader
+    from multiprocessing import freeze_support
+    from tqdm import tqdm
+    
+    freeze_support()
+    
+    dataset = MidiWaveDataset(
+        root_dir="./dataset/train_1", 
+        dimension=21, 
+        note_offset=50,
+        sequence_length=128,
+        device="cpu",
+        precision=torch.float16
+        )
+
+    trainloader = DataLoader(dataset, batch_size=1, num_workers=1, shuffle=True)
+    for data in tqdm(trainloader):
+        X, y = data
