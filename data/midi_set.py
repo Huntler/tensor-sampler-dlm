@@ -135,7 +135,7 @@ class MidiWaveDataset(Dataset):
 
                 break
 
-        X = (np.array(midi_seq), np.array(wave_seq))
+        X = (np.array(midi_seq, dtype=self._precision), np.array(wave_seq, self._precision))
         return X, wave_sample
 
 
