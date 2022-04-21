@@ -18,7 +18,7 @@ class MidiWaveDataset(Dataset):
         Xnotes = np.array(self._df["Xnotes"].iloc[index], dtype=self._precision)
         Xsamples = np.array(self._df["Xsamples"].iloc[index], dtype=self._precision)
         
-        y = self._df["y"].iloc[index]
+        y = np.array(self._df["y"].iloc[index], dtype=self._precision)
         return (Xnotes, Xsamples), y
 
 

@@ -86,9 +86,6 @@ class BaseModel(nn.Module):
         assert self._loss_fn != None
         assert self._optim != None
 
-        # measure history
-        losses = []
-
         for e in range(0, epochs):
             with torch.cuda.amp.autocast() if self._device == "cuda" else no_autocast():
                 # perform the presiction and measure the loss between the prediction
@@ -102,12 +99,9 @@ class BaseModel(nn.Module):
             loss.backward()
             self._optim.step()
 
-            losses.append(loss.item())
-
-        # log for the statistics
-        losses = np.mean(losses, axis=0)
-        self._writer.add_scalar("Train/loss", loss, self.__sample_position)
-        self.__sample_position += len(X)
+            # log for the statistics
+            self._writer.add_scalar("Train/loss", loss.item(), self.__sample_position)
+            self.__sample_position += len(X)
 
         self.eval()
         self._writer.flush()
@@ -116,7 +110,8 @@ class BaseModel(nn.Module):
         assert self._cache != None
 
         with torch.no_grad():
-            sample = self((midi, self._cache))
+            _chache = torch.unsqueeze(self._cache, 0)
+            sample = self((midi, _chache))
 
             self._cache = torch.roll(self._cache, -1)
             self._cache[-1, :] = sample

@@ -62,13 +62,13 @@ class MlpModel(BaseModel):
 
     def forward(self, X) -> torch.tensor:
         midi, wave = X
-        midi = torch.flatten(midi)
-        wave = torch.flatten(wave)
+        midi = torch.flatten(midi, 1, 2)
+        wave = torch.flatten(wave, 1, 2)
 
         # send midi and wave inputs to their first layer an concat both outputs
         x1 = self.__midi_input(midi)
         x2 = self.__wave_input(wave)
-        x = torch.concat((x1, x2))
+        x = torch.cat((x1, x2), dim=1)
         x = torch.relu(x)
 
         # pass the concat through the other dense layers

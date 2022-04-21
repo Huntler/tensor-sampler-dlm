@@ -1,5 +1,6 @@
 import numpy as np
-import scipy.io
+import pandas as pd
+import scipy.io.wavfile
 import torch
 from data.midi_set_v2 import MidiWaveDataset
 from torch.utils.data import DataLoader
@@ -18,15 +19,12 @@ if __name__ == '__main__':
     model = model(input_size=21, sequence_length=128)
     
     dataset = MidiWaveDataset(
-        root_dir="./dataset/train_0", 
-        dimension=21, 
-        note_offset=50,
-        sequence_length=128,
+        dataframe=pd.read_hdf("./dataset/train_0/dataset_0.pandas", "midi_wave"),
         device="cpu",
         precision=np.float32
         )
 
-    trainloader = DataLoader(dataset, batch_size=16, num_workers=2, shuffle=True)
+    trainloader = DataLoader(dataset, batch_size=200, num_workers=2, shuffle=True)
     i = 0
     for data in tqdm(trainloader):
         X, y = data
@@ -43,7 +41,9 @@ if __name__ == '__main__':
     for i in tqdm(range(1, 44100 * 3)):
         X, y = dataset[i]
         midi, _ = X
-        sample = model.predict(torch.tensor(midi))
+        midi = torch.tensor(midi)
+        midi = torch.unsqueeze(midi, 0)
+        sample = model.predict(midi)
         wave.append(sample)
 
     wave = np.array(wave).T
