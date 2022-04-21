@@ -8,6 +8,7 @@ dependencies:
     - matplotlib
     - tqdm
     - ipython
+    - pytables
     - pip:
         - mido
         - torch
