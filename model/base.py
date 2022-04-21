@@ -25,7 +25,7 @@ class BaseModel(nn.Module):
             self.__tb_sub = datetime.now().strftime("%m-%d-%Y_%H%M%S")
             self._tb_path = f"runs/{self.__tb_sub}"
             self._writer = SummaryWriter(self._tb_path)
-        self.__sample_position = 0
+        self._sample_position = 0
 
         # check for gpu
         self._device = "cpu"
@@ -100,8 +100,9 @@ class BaseModel(nn.Module):
             self._optim.step()
 
             # log for the statistics
-            self._writer.add_scalar("Train/loss", loss.item(), self.__sample_position)
-            self.__sample_position += len(X)
+            self._writer.add_scalar("Train/loss", loss.item(), self._sample_position)
+            self._sample_position += len(X[0])
+            self._writer.flush()
 
         self.eval()
         self._writer.flush()

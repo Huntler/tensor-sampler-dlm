@@ -7,10 +7,15 @@ from torch.utils.data import Dataset
 class MidiWaveDataset(Dataset):
     def __init__(self, dataframe: pd.DataFrame, device: str = "cpu",
                  precision: np.dtype = np.float16) -> None:
-                 self._device = device
-                 self._precision = precision
-                 self._df = dataframe
+                 
+        self._device = device
+        self._precision = precision
+        self._df = dataframe
     
+    @property
+    def sample_rate(self) -> int:
+        return 44100
+
     def __len__(self) -> int:
         return len(self._df)
 

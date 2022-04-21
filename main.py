@@ -24,14 +24,10 @@ if __name__ == '__main__':
         precision=np.float32
         )
 
-    trainloader = DataLoader(dataset, batch_size=200, num_workers=2, shuffle=True)
-    i = 0
+    trainloader = DataLoader(dataset, batch_size=1000, num_workers=2, shuffle=True)
     for data in tqdm(trainloader):
         X, y = data
-        model.learn(X, y)
-        i += 1
-        if i >= 500:
-            break
+        model.learn(X, y, epochs=5)
     
     model.save_to_default()
      
