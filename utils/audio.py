@@ -1,6 +1,5 @@
 import torch
 import matplotlib.pyplot as plt
-from IPython.display import Audio, display
 
 
 def print_stats(waveform, sample_rate=None, src=None):
@@ -57,14 +56,4 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram", xlim=None):
             axes[c].set_xlim(xlim)
     figure.suptitle(title)
     plt.show(block=False)
-
-
-def play_audio(waveform, sample_rate):
-    num_channels, num_frames = waveform.shape
-    if num_channels == 1:
-        display(Audio(waveform[0], rate=sample_rate))
-    elif num_channels == 2:
-        display(Audio((waveform[0], waveform[1]), rate=sample_rate))
-    else:
-        raise ValueError("Waveform with more than 2 channels are not supported.")
 

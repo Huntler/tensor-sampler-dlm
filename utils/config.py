@@ -2,7 +2,8 @@ from typing import Dict
 import yaml
 
 from model.base import BaseModel
-from model.mlp_model import MlpModel
+from model.cnn_model import CnnModel
+from model.lstm_model import LstmModel
 
 
 class Config:
@@ -48,4 +49,5 @@ class Config:
 
 
 config = Config()
-config.register_model("MlpModel", MlpModel)
+config.register_model("CnnModel", CnnModel)
+config.register_model("LstmModel", LstmModel)

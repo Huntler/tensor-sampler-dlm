@@ -1,18 +1,16 @@
 name: vst-plugin
- 
+channels:
+  - pytorch
+  - defaults
 dependencies:
-    - python=3.9
+    - python=3.10
+    - pyyaml
     - scikit-learn
     - scipy
-    - pandas
     - matplotlib
     - tqdm
-    - ipython
-    - pytables
     - pip:
         - mido
+        - tensorboard
         - torch
         - torchaudio
-        - tensorboard
-        # downgrade because of pytorch bug
-        - setuptools==59.5.0

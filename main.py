@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import scipy.io.wavfile
 import torch
 from data.midi_set_v2 import MidiWaveDataset

@@ -5,6 +5,8 @@ import numpy as np
 from torch import nn
 import torch
 from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 
 @contextlib.contextmanager
@@ -13,7 +15,7 @@ def no_autocast():
 
 
 class BaseModel(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, tag: str, log: bool = True) -> None:
         """
         Base class of a model. This only includes method-playeholders 
         and general methods for statistics etc.
@@ -21,9 +23,9 @@ class BaseModel(nn.Module):
         super(BaseModel, self).__init__()
 
         self._n_channels = 2
-        if self._writer is None:
+        if log:
             self.__tb_sub = datetime.now().strftime("%m-%d-%Y_%H%M%S")
-            self._tb_path = f"runs/{self.__tb_sub}"
+            self._tb_path = f"runs/{tag}/{self.__tb_sub}"
             self._writer = SummaryWriter(self._tb_path)
         self._sample_position = 0
 
@@ -35,8 +37,7 @@ class BaseModel(nn.Module):
 
         self._loss_fn = None
         self._optim = None
-
-        # for prediction
+        self._scheduler = None
         self._cache = None
 
     @property
@@ -48,14 +49,16 @@ class BaseModel(nn.Module):
         self.to(self._device)
 
     def save_to_default(self) -> None:
+        device = self._device
+        self.use_device("cpu")
+
         model_tag = datetime.now().strftime("%H%M%S")
         params = self.state_dict()
         torch.save(params, f"{self._tb_path}/model_{model_tag}.torch")
+
+        self.use_device(device)
     
     def load(self, path) -> None:
-        raise NotImplementedError()
-
-    def reset_cache(self) -> None:
         raise NotImplementedError()
 
     def forward(self, x):
@@ -72,7 +75,7 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError
 
-    def learn(self, X, y, epochs: int = 1):
+    def train_on(self, dataloader: DataLoader, epochs: int = 1, save_every: int = None):
         """
         This method is used to train the model based on the given input
         data.
@@ -86,35 +89,51 @@ class BaseModel(nn.Module):
         assert self._loss_fn != None
         assert self._optim != None
 
-        for e in range(0, epochs):
-            with torch.cuda.amp.autocast() if self._device == "cuda" else no_autocast():
-                # perform the presiction and measure the loss between the prediction
-                # and the expected output
+        total_iters = epochs * len(dataloader)
+        p_bar = None
+
+        self.train()
+        for e in range(epochs):
+            for X, y in dataloader:
+                # train a batch
+                self._optim.zero_grad()
                 pred_y = self(X)
-
-                # calculate the gradient using backpropagation of the loss
                 loss = self._loss_fn(pred_y, y)
+                loss.backward()
+                self._optim.step()
 
-            self._optim.zero_grad()
-            loss.backward()
-            self._optim.step()
+                # log for the statistics
+                self._writer.add_scalar("Train/loss", loss.item(), self._sample_position)
+                self._sample_position += len(X[0])
 
-            # log for the statistics
-            self._writer.add_scalar("Train/loss", loss.item(), self._sample_position)
-            self._sample_position += len(X[0])
-            self._writer.flush()
+                # print some gui
+                if not p_bar:
+                    total_iters *= len(X[0])
+                    p_bar = tqdm(total=total_iters)
+
+                p_bar.update(len(X[0]))
+                self._writer.flush()
+            
+            if save_every and e % save_every == 0:
+                self.save_to_default()
+            
+            if self._scheduler:
+                self._scheduler.step()
+                lr = self._scheduler.get_last_lr()[0]
+                self._writer.add_scalar("Train/learning_rate", lr, e)
 
         self.eval()
         self._writer.flush()
 
     def predict(self, midi) -> List:
         assert self._cache != None
-
+        
         with torch.no_grad():
             _chache = torch.unsqueeze(self._cache, 0)
             sample = self((midi, _chache))
+            sequence = len(sample)
 
-            self._cache = torch.roll(self._cache, -1)
-            self._cache[-1, :] = sample
+            self._cache = torch.roll(self._cache, -sequence)
+            self._cache[-sequence, :] = sample
 
         return sample.numpy()
