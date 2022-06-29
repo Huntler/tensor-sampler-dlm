@@ -44,6 +44,10 @@ class BaseModel(nn.Module):
         # input buffer from previous wave form
         self._n_channels = 2
         self._cache = None
+    
+    @property
+    def channels(self) -> int:
+        return self._n_channels
 
     @property
     def log_path(self) -> str:
