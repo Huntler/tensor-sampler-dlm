@@ -1,9 +1,11 @@
 name: vst-plugin
 channels:
   - pytorch
+  - conda-forge
   - defaults
 dependencies:
     - python=3.10
+    - cudatoolkit=11.6
     - pyyaml
     - scikit-learn
     - scipy

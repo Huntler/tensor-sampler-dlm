@@ -4,36 +4,42 @@ from torch.utils.data import Dataset
 import torchaudio
 import numpy as np
 from mido import MidiFile
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 
-@DeprecationWarning
+# @DeprecationWarning
 class MidiWaveDataset(Dataset):
-    def __init__(self, root_dir: str, dimension: int = 20, note_offset: int = 0,
-                 sequence_length: int = 64, device: str = "cpu",
-                 precision: torch.dtype = torch.float16) -> None:
+    def __init__(self, name: str, dimension: int = 65, note_offset: int = 0,
+                 input_sequence: int = 64, output_sequence: int = 1, precision: np.dtype = np.float32) -> None:
         """Dataset of MIDI files with corresponding WAVE form.
 
         Args:
             root_dir (str): Path of the dataset.
         """
-        self._device = device
         self._precision = precision
         self._dimension = dimension
         self._note_offset = note_offset
-        self._sqeuence_length = sequence_length
-        self._root_dir = root_dir
+        self._sqeuence_length = input_sequence
+        self._out_seq_length = output_sequence
+        self._root_dir = f"data/dataset/{name}"
 
         # read the wave form
-        self._metadata = torchaudio.info(f"{root_dir}/output.wav")
+        self._metadata = torchaudio.info(f"{self._root_dir}/output.wav")
         self._wave, self._sample_rate = torchaudio.load(
-            root_dir + "/output.wav")
+            self._root_dir + "/output.wav")
         self._wave = self._wave.T.numpy()
+        self._wave = np.array(self._wave, dtype=self._precision)
         assert self._metadata.num_frames == len(self._wave)
+
+        # normalize dataset
+        minmax = MinMaxScaler()
+        self._wave = minmax.fit_transform(self._wave)
+        print(f"Dataset boundaries: [{minmax.data_min_};  {minmax.data_max_}]")
 
         # read the midi file's track
         # create the midi file object and the list in which the notes
         # and timestamp were stored
-        self._midi_file = MidiFile(f"{root_dir}/input.mid")
+        self._midi_file = MidiFile(f"{self._root_dir}/input.mid")
 
         self._midi_track = {}
         total_time = 0
@@ -43,10 +49,10 @@ class MidiWaveDataset(Dataset):
                 # rise the total playtime
                 total_time += int(msg.time * self._sample_rate)
                 note_index = msg.note - self._note_offset
-                active_notes = self._midi_track.get(total_time, [])
+                active_notes = self._midi_track.get(total_time, None)
 
                 # if there are no active notes registered for the given time stamp
-                if active_notes == []:
+                if type(active_notes) == type(None):
                     note_value = 0 if msg.type == "note_off" else 1
                     self._midi_track[total_time] = self.__one_hot(
                         note_index, note_value)
@@ -67,11 +73,7 @@ class MidiWaveDataset(Dataset):
     def __one_hot(self, index: int, value: int, tensor: bool = False) -> torch.tensor:
         one_hot = np.zeros((self._dimension), dtype=np.uint8)
         one_hot[index] = value
-
-        if tensor:
-            return torch.tensor(one_hot, dtype=self._precision, device=self._device)
-        else:
-            return one_hot
+        return np.array(one_hot, dtype=self._precision)
 
     @property
     def dimension(self) -> int:
@@ -85,13 +87,19 @@ class MidiWaveDataset(Dataset):
         return self._total_time - self._sqeuence_length
     
     def __getitem__(self, index) -> Tuple[np.array, np.array]:
-        # generate the sequences
-        midi_seq = np.zeros((self._sqeuence_length, self._dimension))
-        wave_seq = self._wave[index]
-
         # speed up the process
         end_index = index + self._sqeuence_length
         seq_time_index = 0
+
+        # generate the sequences
+        midi_seq = np.zeros((self._sqeuence_length, self._dimension), dtype=self._precision)
+        wave_seq = np.zeros((self._sqeuence_length, 2), dtype=self._precision)
+        _tmp = self._wave[index:end_index, :]
+        wave_seq[:len(_tmp)] = _tmp
+
+        to_pred = np.zeros((self._out_seq_length, 2), dtype=self._precision)
+        _tmp = self._wave[end_index:end_index + self._out_seq_length, :]
+        to_pred[:len(_tmp)] = _tmp
 
         # get the sequence
         for seq_index in range(index, end_index):
@@ -115,6 +123,23 @@ class MidiWaveDataset(Dataset):
                     seq_time_index = time_index
                     break
         
-        X = (np.array(midi_seq), np.array(self._wave[index:end_index, :]))
-        return X, wave_seq
+        return (midi_seq, wave_seq), to_pred
 
+
+if __name__ == "__main__":
+    from torch.utils.data import DataLoader
+    from multiprocessing import freeze_support
+    from tqdm import tqdm
+    
+    freeze_support()
+
+    dataset = MidiWaveDataset(
+        name="train_0",
+        dimension=65,
+        input_sequence=1024,
+        output_sequence=256
+        )
+
+    trainloader = DataLoader(dataset, batch_size=32, num_workers=0, shuffle=True)
+    for data in tqdm(trainloader):
+        X, y = data
