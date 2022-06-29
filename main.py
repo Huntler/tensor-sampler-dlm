@@ -90,13 +90,16 @@ def train_mode():
 
 
 def load_mode():
+    # disable some configurations, such as shuffle to gain a useful output
     config_dict["dataset"]["loader"]["batch_size"] = 1
+    config_dict["dataset"]["loader"]["shuffle"] = False
     
+    # prepare the dataset and model
     dataloader = prepare_dataset()
     model = prepare_model()
     root_folder = model.log_path
 
-    # predict the waveform
+    # use the loaded model to predict a waveform
     wave = []
     for X, _ in tqdm(dataloader):
         X_midi, _ = X

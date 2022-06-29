@@ -22,7 +22,7 @@ class BaseModel(nn.Module):
         """
         super(BaseModel, self).__init__()
 
-        self._n_channels = 2
+        # create logger instance (TensorBoard) and set position of pointer
         if log:
             self.__tb_sub = datetime.now().strftime("%m-%d-%Y_%H%M%S")
             self._tb_path = f"runs/{tag}/{self.__tb_sub}"
@@ -35,9 +35,14 @@ class BaseModel(nn.Module):
             self.__device_name = torch.cuda.get_device_name(0)
             print(f"GPU acceleration available on {self.__device_name}")
 
+        # define variables for loss function, optimizer and scheduler
         self._loss_fn = None
         self._optim = None
         self._scheduler = None
+
+        # define parameters for sound generation, such as output channel size and
+        # input buffer from previous wave form
+        self._n_channels = 2
         self._cache = None
 
     @property
@@ -53,18 +58,29 @@ class BaseModel(nn.Module):
         return self.__device
 
     def use_device(self, device: str) -> None:
+        """Moves the network and cache storage to the specified device.
+
+        Args:
+            device (str): Device should be supported by PyTorch e.g. 'cpu', 'cuda', 'mps', ...
+        """
         self.__device = device
         self._cache = self._cache.to(self.device)
         self.to(self.device)
 
     def save_to_default(self) -> None:
+        """Moves the network back to CPU and saves it to disk. Then the network is moved back 
+        to its original device to be able to further train it.
+        """
+        # remember current device and move network
         device = self.device
         self.use_device("cpu")
 
+        # create a unique model tag and save it
         model_tag = datetime.now().strftime("%H%M%S")
         params = self.state_dict()
         torch.save(params, f"{self._tb_path}/model_{model_tag}.torch")
 
+        # finally move the network back
         self.use_device(device)
     
     def load(self, path) -> None:
@@ -95,15 +111,19 @@ class BaseModel(nn.Module):
                                  sample respectively.
             sample_list (List): The expected output given the midi as an input.
         """
+        # loss function and optimizers are needed
         assert self._loss_fn != None
         assert self._optim != None
 
+        # create tge progress bar variable and calculate the amount of samples to train
         total_iters = epochs * len(dataloader)
         p_bar = None
 
+        # start the training loop
         self.train()
         for e in range(epochs):
             for X, y in dataloader:
+                # move samples/batch to train onto the specified device
                 X_midi, X_wave = X[0].to(self.device), X[1].to(self.device)
                 y = y.to(self.device)
 
@@ -118,7 +138,7 @@ class BaseModel(nn.Module):
                 self._writer.add_scalar("Train/loss", loss.item(), self._sample_position)
                 self._sample_position += len(X[0])
 
-                # print some gui
+                # print the progress bar showing the trainings progress
                 if not p_bar:
                     total_iters *= len(X[0])
                     p_bar = tqdm(total=total_iters)
@@ -126,9 +146,11 @@ class BaseModel(nn.Module):
                 p_bar.update(len(X[0]))
                 self._writer.flush()
             
+            # save the model every x epochs if wanted, value has to be above 0
             if save_every and e % save_every == 0:
                 self.save_to_default()
             
+            # if a scheduler was set, then use it to adapt the learning rate
             if self._scheduler:
                 self._scheduler.step()
                 lr = self._scheduler.get_last_lr()[0]
@@ -138,14 +160,19 @@ class BaseModel(nn.Module):
         self._writer.flush()
 
     def predict(self, midi) -> List:
+        # move the input onto the same device as the model is on
         midi = midi.to(self.device)
 
+        # calculating a gradient is not needed, disable that to improve performance
         with torch.no_grad():
+            # send the cache and midi input to the network
             _cache = torch.unsqueeze(self._cache, 0)
             sample = self((midi, _cache))
             sequence = len(sample)
 
+            # update the cache based on the prediction
             self._cache = torch.roll(self._cache, -sequence)
             self._cache[-sequence, :] = sample
 
+        # always move the sample to cpu and return it
         return sample.detach().cpu().numpy()
