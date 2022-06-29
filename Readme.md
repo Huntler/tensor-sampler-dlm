@@ -3,6 +3,7 @@
 Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) on your system and execute one of the follwing command afterwards, depending on GPU acceleration (CUDA 11.6).
 
 ```(1) $ conda env create -f conda-envs/universal.yml```
+
 ```(2) $ conda env create -f conda-envs/cuda-11.yml```
 
 After installation, the environment can be activated by calling 
@@ -13,6 +14,7 @@ After installation, the environment can be activated by calling
 There are two options to train, the first one trains one model based on a provided configuration file and the second one trains a set of configurations located in a folder. CAUTION: The second method is not implemented yet.
 
 ```(1) $ python main.py --config <PATH_TO_CONFIG_FILE>```
+
 ```(2) $ python utils/mutli_train.py --folder <PATH_TO_CONFIG_FOLDER>```
 
 ## Tensorboard
