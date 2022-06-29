@@ -101,15 +101,16 @@ def load_mode():
 
     # use the loaded model to predict a waveform
     wave = []
-    for X, _ in tqdm(dataloader):
+    for X, y in tqdm(dataloader):
         X_midi, _ = X
         window = model.predict(X_midi)
         for sample in window:
             wave.append(sample)
 
-    wave = np.array(wave).T
+    wave = np.array(wave)
+    wave = wave[:, 0, :]
     print(wave, wave.shape)
-    scipy.io.wavfile.write(f"{root_folder}/output.wav", 44100, wave.T)
+    scipy.io.wavfile.write(f"{root_folder}/output.wav", 44100, wave)
 
 
 # how to use the dataset MidiWave dataset
