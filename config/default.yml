@@ -1,17 +1,30 @@
+# specify device
 device: cuda
 log: True
+
+# this is automatically set after a training session
 evaluation:
+
+# model and dataset depends on those parameters
 input_sequence: 512
-output_sequence: 1
+output_sequence: 512
+
+# specify model arguments
 model:
-  tag: LSTM/4-to-1
+  tag: LSTM/1024
   name: LstmModel
+
+  # arguments used for training the model
   train:
     epochs: 5
     save_every: 1
+
+# specify dataset arguments
 dataset: 
   name: train_0
+
+  # dataloader specific arguments
   loader:
-    batch_size: 128
+    batch_size: 64
     shuffle: True
     num_workers: 2
