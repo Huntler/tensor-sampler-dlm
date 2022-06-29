@@ -30,7 +30,7 @@ class BaseModel(nn.Module):
         self._sample_position = 0
 
         # check for gpu
-        self._device = "cpu"
+        self.__device = "cpu"
         if torch.cuda.is_available():
             self.__device_name = torch.cuda.get_device_name(0)
             print(f"GPU acceleration available on {self.__device_name}")
@@ -44,12 +44,21 @@ class BaseModel(nn.Module):
     def log_path(self) -> str:
         return self._tb_path
 
+    @log_path.setter
+    def log_path(self, data: str):
+        self._tb_path = data
+    
+    @property
+    def device(self) -> str:
+        return self.__device
+
     def use_device(self, device: str) -> None:
-        self._device = device
-        self.to(self._device)
+        self.__device = device
+        self._cache = self._cache.to(self.device)
+        self.to(self.device)
 
     def save_to_default(self) -> None:
-        device = self._device
+        device = self.device
         self.use_device("cpu")
 
         model_tag = datetime.now().strftime("%H%M%S")
@@ -95,9 +104,12 @@ class BaseModel(nn.Module):
         self.train()
         for e in range(epochs):
             for X, y in dataloader:
+                X_midi, X_wave = X[0].to(self.device), X[1].to(self.device)
+                y = y.to(self.device)
+
                 # train a batch
                 self._optim.zero_grad()
-                pred_y = self(X)
+                pred_y = self((X_midi, X_wave))
                 loss = self._loss_fn(pred_y, y)
                 loss.backward()
                 self._optim.step()
@@ -126,14 +138,14 @@ class BaseModel(nn.Module):
         self._writer.flush()
 
     def predict(self, midi) -> List:
-        assert self._cache != None
-        
+        midi = midi.to(self.device)
+
         with torch.no_grad():
-            _chache = torch.unsqueeze(self._cache, 0)
-            sample = self((midi, _chache))
+            _cache = torch.unsqueeze(self._cache, 0)
+            sample = self((midi, _cache))
             sequence = len(sample)
 
             self._cache = torch.roll(self._cache, -sequence)
             self._cache[-sequence, :] = sample
 
-        return sample.numpy()
+        return sample.detach().cpu().numpy()

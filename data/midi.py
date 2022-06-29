@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 # @DeprecationWarning
 class MidiWaveDataset(Dataset):
     def __init__(self, name: str, dimension: int = 65, note_offset: int = 0,
-                 input_sequence: int = 64, output_sequence: int = 1, precision: np.dtype = np.float16) -> None:
+                 input_sequence: int = 64, output_sequence: int = 1, precision: np.dtype = np.float32) -> None:
         """Dataset of MIDI files with corresponding WAVE form.
 
         Args:

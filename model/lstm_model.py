@@ -50,6 +50,7 @@ class LstmModel(BaseModel):
         self._loss_fn = torch.nn.L1Loss()
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
+        self._cache = torch.zeros((self.__in_seq_len, 2), dtype=torch.float32)
     
     def load(self, path) -> None:
         """Loads the model's parameter given a path
