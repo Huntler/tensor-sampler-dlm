@@ -6,12 +6,12 @@ log: True
 evaluation:
 
 # model and dataset depends on those parameters
-input_sequence: 512
-output_sequence: 512
+prev_samples: 512
+future_samples: 512
 
 # specify model arguments
 model:
-  tag: LSTM/1024
+  tag: LSTM/512-512
   name: LstmModel
 
   # arguments used for training the model

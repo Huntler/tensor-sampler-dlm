@@ -17,8 +17,8 @@ config_dict = None
 def prepare_dataset() -> DataLoader:
     # get the related configuration
     dataset_dict = deepcopy(config_dict)["dataset"]
-    dataset_dict["input_sequence"] = config_dict["input_sequence"]
-    dataset_dict["output_sequence"] = config_dict["output_sequence"]
+    dataset_dict["prev_samples"] = config_dict["prev_samples"]
+    dataset_dict["future_samples"] = config_dict["future_samples"]
     loader_dict = dataset_dict["loader"]
     del dataset_dict["loader"]
 
@@ -37,8 +37,7 @@ def prepare_model() -> BaseModel:
     # get the related configuration
     model_dict = deepcopy(config_dict)
     model_name = model_dict["model"]["name"]
-    model_dict["model"]["input_sequence"] = model_dict["input_sequence"]
-    model_dict["model"]["output_sequence"] = model_dict["output_sequence"]
+    model_dict["model"]["cache_size"] = model_dict["prev_samples"]
     model_dict["model"]["log"] = model_dict["log"]
     del model_dict["model"]["name"]
     del model_dict["model"]["train"]
@@ -131,6 +130,7 @@ if __name__ == "__main__":
 
     if log_path is None:
         train_mode()
+        load_mode()
 
     if log_path:
         load_mode()
