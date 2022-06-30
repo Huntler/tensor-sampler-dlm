@@ -53,6 +53,7 @@ def prepare_model() -> BaseModel:
         to_store = deepcopy(config_dict)
         to_store["log"] = False
         to_store["evaluation"] = model.log_path
+        to_store["device"] = "cpu"
         # FIXME: fix precision handling
         # del to_store["dataset"]["precision"]
         config.store_args(f"{model.log_path}/config.yml", to_store)
@@ -107,7 +108,6 @@ def load_mode():
             wave.append(sample)
 
     wave = np.array(wave)
-    wave = wave[:, 0, :]
     print(wave, wave.shape)
     scipy.io.wavfile.write(f"{root_folder}/output.wav", 44100, wave)
 
