@@ -10,7 +10,8 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 # @DeprecationWarning
 class MidiWaveDataset(Dataset):
     def __init__(self, name: str, dimension: int = 65, note_offset: int = 0,
-                 prev_samples: int = 500, future_samples: int = 500, precision: np.dtype = np.float32) -> None:
+                 prev_samples: int = 500, future_samples: int = 500, 
+                 normalize: bool = True, precision: np.dtype = np.float32) -> None:
         """Dataset of MIDI files with corresponding WAVE form.
 
         Args:
@@ -32,9 +33,10 @@ class MidiWaveDataset(Dataset):
         assert self._metadata.num_frames == len(self.__wave)
 
         # normalize dataset
-        minmax = MinMaxScaler()
-        self.__wave = minmax.fit_transform(self.__wave)
-        print(f"Dataset boundaries: [{minmax.data_min_};  {minmax.data_max_}]")
+        if normalize:
+            minmax = MinMaxScaler()
+            self.__wave = minmax.fit_transform(self.__wave)
+            print(f"Dataset boundaries: [{minmax.data_min_};  {minmax.data_max_}]")
 
         # read the midi file's track
         # create the midi file object and the list in which the notes

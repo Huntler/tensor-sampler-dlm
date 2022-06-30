@@ -22,6 +22,7 @@ model:
 # specify dataset arguments
 dataset: 
   name: train_0
+  normalize: False
 
   # dataloader specific arguments
   loader:
