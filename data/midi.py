@@ -115,14 +115,14 @@ class MidiWaveDataset(Dataset):
 
                 # there is no midi message after this one, we are at the end
                 if len(self._start_times) <= time_index:
-                    midi_seq[-(index - seq_index), :] = self._midi_track[start_time]
+                    midi_seq[-(midi_start - seq_index), :] = self._midi_track[start_time]
                     seq_time_index = time_index
                     break
 
-                # if the following message's start time is bigger than the index, we can safely
+                # if the following message's start time is bigger than the midi_start, we can safely
                 # add the current message to the sequence
                 if self._start_times[time_index + 1] >= seq_index:
-                    midi_seq[-(index - seq_index), :] = self._midi_track[start_time]
+                    midi_seq[-(midi_start - seq_index), :] = self._midi_track[start_time]
                     seq_time_index = time_index
                     break
         
@@ -132,8 +132,8 @@ class MidiWaveDataset(Dataset):
 if __name__ == "__main__":
     from tqdm import tqdm
     
-    n_prev = 500
-    n_future = 500
+    n_prev = 10
+    n_future = 5
 
     dataset = MidiWaveDataset(
         name="train_0",
@@ -148,3 +148,8 @@ if __name__ == "__main__":
 
         assert len(X_midi) == n_prev + n_future, f"length was {len(X_midi)} but expected {n_prev + n_future}"
         assert len(X_wave) == n_prev, f"length was {len(X_wave)} but expected {n_prev}"
+
+        print(np.argmax(X_midi, axis=-1))
+        print(X_wave)
+        print(y)
+        # input("Enter to continue >")

@@ -91,6 +91,7 @@ def train_mode():
 
 def load_mode():
     # disable some configurations, such as shuffle to gain a useful output
+    config_dict["log"] = False
     config_dict["dataset"]["loader"]["batch_size"] = 1
     config_dict["dataset"]["loader"]["shuffle"] = False
     

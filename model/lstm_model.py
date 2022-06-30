@@ -19,11 +19,12 @@ class LstmModel(BaseModel):
         self.__channels = channels
 
         self.__net_midi = nn.Sequential(
-            nn.Linear(65, 48),
-            nn.LeakyReLU(),
-            nn.Linear(48, 32),
-            nn.LeakyReLU(),
-            nn.Linear(32, 16),
+            nn.Conv1d(1024+128, 1024+64, 10, 1),
+            nn.BatchNorm1d(1024+64),
+            nn.Tanh(),
+            nn.Conv1d(1024+64, 1024, 5, 1),
+            nn.BatchNorm1d(1024),
+            nn.Tanh()
         )
 
         self.__net_wave = nn.Sequential(
@@ -32,13 +33,12 @@ class LstmModel(BaseModel):
             nn.Linear(8, 16)
         )
 
-        self.__lstm_prev = nn.LSTM(32, 128, num_layers=2, dropout=0.1, bidirectional=False, batch_first=True)
-        self.__lstm_future = nn.LSTM(16, 128, num_layers=1, dropout=0.1, bidirectional=False, batch_first=True)
+        self.__lstm = nn.LSTM(68, 128, num_layers=2, bidirectional=False, batch_first=True)
         self.__reduction = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(256, 128),
+            nn.Linear(128, 96),
             nn.LeakyReLU(),
-            nn.Linear(128, 64),
+            nn.Linear(96, 64),
             nn.LeakyReLU(),
             nn.Linear(64, 32),
             nn.LeakyReLU(),
@@ -63,24 +63,17 @@ class LstmModel(BaseModel):
         batch_size, wave_seq, wave_f = x_wave.shape
 
         # extract features of midi/wave input
-        x_midi = x_midi.view(-1, midi_f)
-        x_wave = x_wave.view(-1, wave_f)
         x_midi = self.__net_midi(x_midi)
+
+        x_wave = x_wave.view(-1, wave_f)
         x_wave = self.__net_wave(x_wave)
-        x_midi = x_midi.view(batch_size, midi_seq, 16)
         x_wave = x_wave.view(batch_size, wave_seq, 16)
 
-        # pass both extracted feature types of the previous sequence into the LSTM
-        x_prev = torch.concat((x_midi[:, 0:wave_seq, :], x_wave), dim=-1)
-        x, (h, c) = self.__lstm_prev(x_prev)
-        x_prev = h[0]
-
-        # pass the future sequence into another LSTM
-        x, (h, c) = self.__lstm_future(x_midi[:, wave_seq:, :])
-        x_future = h[0]
-
         # concatenate both LSTM outputs and reduce their dimension
-        x = torch.concat((x_prev, x_future), dim=-1)
+        x = torch.concat((x_midi, x_wave), dim=-1)
+        x, (h, c) = self.__lstm(x)
+        x = h[0]
+
         x = self.__reduction(x)
 
         return x
