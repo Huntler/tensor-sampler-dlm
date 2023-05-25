@@ -70,7 +70,7 @@ To simplify the program start or to enable debugging, create the directory ".vsc
 To start debugging, press "F5". The debug configuration can be changed under the 4th icon on the left-hand menu.
 
 ## Train
-There are two options to train, the first one trains one model based on a provided configuration file and the second one trains a set of configurations located in a folder. CAUTION: The second method is not implemented yet.
+There are two options to train, the first one trains one model based on a provided configuration file and the second one trains a set of configurations located in a folder. CAUTION: The second method is not implemented yet. IMPORTANT: The datasat should be located at "data/dataset/[dataset_name]/[input.mid|output.wav]".
 
 ```(1) $ python main.py --config <PATH_TO_CONFIG_FILE>```
 
