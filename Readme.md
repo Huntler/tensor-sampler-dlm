@@ -35,7 +35,8 @@ Happy Coding!
 
 ### Additional Settings
 To simplify the program start or to enable debugging, create the directory ".vscode" in the project's root. Then, create a file called "launch.json" and paste the following:
-```{
+```
+{
     "version": "0.2.0",
     "configurations": [
         {
@@ -63,7 +64,8 @@ To simplify the program start or to enable debugging, create the directory ".vsc
             ]
         }
     ]
-}```
+}
+```
 
 To start debugging, press "F5". The debug configuration can be changed under the 4th icon on the left-hand menu.
 
