@@ -33,7 +33,7 @@ class LstmModel(BaseModel):
             nn.Linear(8, 16)
         )
 
-        self.__lstm = nn.LSTM(68, 128, num_layers=2, bidirectional=False, batch_first=True)
+        self.__lstm = nn.LSTM(93, 128, num_layers=2, bidirectional=False, batch_first=True)
         self.__reduction = nn.Sequential(
             nn.Flatten(),
             nn.Linear(128, 96),

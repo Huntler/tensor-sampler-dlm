@@ -101,6 +101,7 @@ def load_mode():
     root_folder = model.log_path
 
     # use the loaded model to predict a waveform
+    # TODO: optimize prediction, batch prediction?
     wave = []
     for X, y in tqdm(dataloader):
         X_midi, _ = X
@@ -121,6 +122,8 @@ if __name__ == "__main__":
         description="Train or load a VST Tensor-Sample DLM.")
     parser.add_argument("--config", dest="config",
                         help="Configuration of the model.")
+    parser.add_argument("--load-only", dest="load_only", action='store_true',
+                        help="Only loads the model and processes a MIDI file.")
     args = parser.parse_args()
 
     # load model arguments and check if it can be evaluated
@@ -128,6 +131,13 @@ if __name__ == "__main__":
     # FIXME
     # config_dict["dataset"]["precision"] = np.float16 if config_dict["device"] == "cuda" else np.float32
     log_path = config_dict["evaluation"]
+
+    if args.load_only:
+        if log_path is None:
+            raise RuntimeError("Expected key 'evaluation' in config. Unable to load model.")
+        
+        load_mode()
+        quit()
 
     if log_path is None:
         train_mode()

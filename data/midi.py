@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 # @DeprecationWarning
 class MidiWaveDataset(Dataset):
-    def __init__(self, name: str, dimension: int = 65, note_offset: int = 0,
+    def __init__(self, name: str, dimension: int = 90, note_offset: int = 0,
                  prev_samples: int = 500, future_samples: int = 500, 
                  normalize: bool = True, precision: np.dtype = np.float32) -> None:
         """Dataset of MIDI files with corresponding WAVE form.
@@ -43,13 +43,20 @@ class MidiWaveDataset(Dataset):
         # and timestamp were stored
         self._midi_file = MidiFile(f"{self._root_dir}/input.mid")
 
+        # calculate max time of midi file
+        max_time = 0
+        for msg in self._midi_file.tracks[-1]:
+            if "note" in msg.dict().keys():
+                max_time += msg.time
+        time_factor = self._metadata.num_frames / max_time
+
         self._midi_track = {}
         total_time = 0
-        for msg in self._midi_file:
+        for msg in self._midi_file.tracks[-1]:
             # we are only interested in messages containing a note
             if "note" in msg.dict().keys():
                 # rise the total playtime
-                total_time += int(msg.time * self._sample_rate)
+                total_time += int(msg.time * time_factor)# * self._sample_rate)
                 note_index = msg.note - self._note_offset
                 active_notes = self._midi_track.get(total_time, None)
 
@@ -67,6 +74,11 @@ class MidiWaveDataset(Dataset):
         self._total_time = total_time
         self._start_times = [_ for _ in self._midi_track.keys()]
         self._start_times.sort()
+
+        # correct wave length, in case midi size was slightly bigger
+        if total_time > self._metadata.num_frames:
+            padding = total_time - self._metadata.num_frames
+            self.__wave = np.append(self.__wave, np.zeros(2, padding))
 
     def __one_hot(self, index: int, value: int, tensor: bool = False) -> torch.tensor:
         one_hot = np.zeros((self._dimension), dtype=np.uint8)
