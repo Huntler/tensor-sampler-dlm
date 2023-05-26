@@ -4,7 +4,7 @@ import scipy.io.wavfile
 import torch
 import os
 from copy import deepcopy
-from data.midi import MidiWaveDataset
+from data.audioset import AudioDataset
 from model.base import BaseModel
 from utils.config import config
 from torch.utils.data import DataLoader
@@ -24,7 +24,7 @@ def prepare_dataset() -> DataLoader:
     del dataset_dict["loader"]
 
     # create the dataset and dataset loader
-    dataset = MidiWaveDataset(**dataset_dict)
+    dataset = AudioDataset(**dataset_dict)
     dataloader = DataLoader(dataset, **loader_dict)
 
     # give some info
@@ -125,11 +125,18 @@ if __name__ == "__main__":
                         help="Configuration of the model.")
     parser.add_argument("--load-only", dest="load_only", action='store_true',
                         help="Only loads the model and processes a MIDI file.")
+    parser.add_argument("--debug", dest="debug", help="Starts the program in a given mode to debug easier. (e.g. [dataset])")
     args = parser.parse_args()
 
     # load model arguments and check if it can be evaluated
     config_dict = config.get_args(args.config)
     log_path = config_dict["evaluation"]
+
+    if args.debug == "dataset":
+        dataloader = prepare_dataset()
+        for X, y in tqdm(dataloader):
+            pass
+        quit()
 
     if args.load_only:
         if log_path is None:

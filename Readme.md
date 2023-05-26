@@ -62,6 +62,33 @@ To simplify the program start or to enable debugging, create the directory ".vsc
                 "--config",
                 "config/default.yml"
             ]
+        },
+        {
+            "name": "Load: Run in opened config-file",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--load-only",
+                "--config",
+                "${file}"
+            ]
+        },
+        {
+            "name": "Data: AudioSet",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--config",
+                "config/default.yml",
+                "--debug",
+                "dataset"
+            ]
         }
     ]
 }

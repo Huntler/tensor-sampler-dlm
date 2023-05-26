@@ -5,9 +5,9 @@ import torchaudio
 import numpy as np
 from mido import MidiFile
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from warnings import warn
 
 
-# @DeprecationWarning
 class MidiWaveDataset(Dataset):
     def __init__(self, name: str, dimension: int = 90, note_offset: int = 0,
                  prev_samples: int = 500, future_samples: int = 500, 
@@ -17,6 +17,8 @@ class MidiWaveDataset(Dataset):
         Args:
             root_dir (str): Path of the dataset.
         """
+        warn('This is deprecated and got replaced by AudioSet', DeprecationWarning, stacklevel=2)
+
         self._precision = precision
         self._dimension = dimension
         self._note_offset = note_offset
@@ -144,12 +146,12 @@ class MidiWaveDataset(Dataset):
 if __name__ == "__main__":
     from tqdm import tqdm
     
-    n_prev = 10
-    n_future = 5
+    n_prev = 4
+    n_future = 2
 
     dataset = MidiWaveDataset(
         name="train_0",
-        dimension=65,
+        dimension=90,
         prev_samples=n_prev,
         future_samples=n_future
         )
@@ -164,4 +166,4 @@ if __name__ == "__main__":
         print(np.argmax(X_midi, axis=-1))
         print(X_wave)
         print(y)
-        # input("Enter to continue >")
+        input("Enter to continue >")
