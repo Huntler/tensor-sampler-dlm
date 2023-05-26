@@ -11,9 +11,9 @@ from torch.optim.lr_scheduler import ExponentialLR
 class LstmModel(BaseModel):
     def __init__(self, tag: str, channels: int = 2, lr: float = 1e-3, lr_decay: float = 9e-1, 
                  adam_betas: List[float] = [9e-1, 999e-3], cache_size: int = 1,
-                 log: bool = True) -> None:
+                 log: bool = True, precision: torch.dtype = torch.float32) -> None:
         # initialize components using the parent class
-        super(LstmModel, self).__init__(tag, log)
+        super(LstmModel, self).__init__(tag, log, precision)
 
         # define hyperparameters for the network itself
         self.__channels = channels
@@ -49,7 +49,7 @@ class LstmModel(BaseModel):
         self._loss_fn = torch.nn.L1Loss()
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
-        self._cache = torch.zeros((cache_size, 2), dtype=torch.float32)
+        self._cache = torch.zeros((cache_size, 2), dtype=self._precision)
     
     def load(self, path) -> None:
         """Loads the model's parameter given a path

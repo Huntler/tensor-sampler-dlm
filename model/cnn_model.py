@@ -11,10 +11,10 @@ from torch.optim.lr_scheduler import ExponentialLR
 class CnnModel(BaseModel):
     def __init__(self, tag: str, channels: int = 2, lr: float = 1e-3, lr_decay: float = 9e-1, 
                  adam_betas: List[float] = [9e-1, 999e-3], input_sequence: int = 1, 
-                 output_sequence: int = 1, log: bool = True) -> None:
+                 output_sequence: int = 1, log: bool = True, precision: torch.dtype = torch.float32) -> None:
 
         # initialize components using the parent class
-        super(CnnModel, self).__init__(tag, log)
+        super(CnnModel, self).__init__(tag, log, precision)
 
         # define hyperparameters for the network itself
         self.__channels = channels

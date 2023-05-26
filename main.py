@@ -19,6 +19,7 @@ def prepare_dataset() -> DataLoader:
     dataset_dict = deepcopy(config_dict)["dataset"]
     dataset_dict["prev_samples"] = config_dict["prev_samples"]
     dataset_dict["future_samples"] = config_dict["future_samples"]
+    dataset_dict["precision"] = np.float16 if config_dict["device"] == "cuda" else np.float32
     loader_dict = dataset_dict["loader"]
     del dataset_dict["loader"]
 
@@ -39,6 +40,7 @@ def prepare_model() -> BaseModel:
     model_name = model_dict["model"]["name"]
     model_dict["model"]["cache_size"] = model_dict["prev_samples"]
     model_dict["model"]["log"] = model_dict["log"]
+    model_dict["precision"] = np.float16 if config_dict["device"] == "cuda" else np.float32
     del model_dict["model"]["name"]
     del model_dict["model"]["train"]
 
@@ -54,8 +56,6 @@ def prepare_model() -> BaseModel:
         to_store["log"] = False
         to_store["evaluation"] = model.log_path
         to_store["device"] = "cpu"
-        # FIXME: fix precision handling
-        # del to_store["dataset"]["precision"]
         config.store_args(f"{model.log_path}/config.yml", to_store)
     
     else:
@@ -92,7 +92,6 @@ def train_mode():
 def load_mode():
     # disable some configurations, such as shuffle to gain a useful output
     config_dict["log"] = False
-    config_dict["dataset"]["loader"]["batch_size"] = 1
     config_dict["dataset"]["loader"]["shuffle"] = False
     
     # prepare the dataset and model
@@ -105,9 +104,11 @@ def load_mode():
     wave = []
     for X, y in tqdm(dataloader):
         X_midi, _ = X
-        window = model.predict(X_midi)
-        for sample in window:
-            wave.append(sample)
+        batch_size, _, _ = X_midi.shape
+        for sample in range(batch_size):
+            window = model.predict(X_midi[sample])
+            for sample in window:
+                wave.append(sample)
 
     wave = np.array(wave)
     print(wave, wave.shape)
@@ -128,8 +129,6 @@ if __name__ == "__main__":
 
     # load model arguments and check if it can be evaluated
     config_dict = config.get_args(args.config)
-    # FIXME
-    # config_dict["dataset"]["precision"] = np.float16 if config_dict["device"] == "cuda" else np.float32
     log_path = config_dict["evaluation"]
 
     if args.load_only:

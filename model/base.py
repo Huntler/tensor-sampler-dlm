@@ -15,7 +15,7 @@ def no_autocast():
 
 
 class BaseModel(nn.Module):
-    def __init__(self, tag: str, log: bool = True) -> None:
+    def __init__(self, tag: str, log: bool = True, precision: torch.dtype = torch.float32) -> None:
         """
         Base class of a model. This only includes method-playeholders 
         and general methods for statistics etc.
@@ -44,6 +44,10 @@ class BaseModel(nn.Module):
         # input buffer from previous wave form
         self._n_channels = 2
         self._cache = None
+
+        # the following is needed to avoid zero gradients in mixed precision
+        self._precision = precision
+        self.__scaler = torch.cuda.amp.GradScaler()
     
     @property
     def channels(self) -> int:
@@ -132,11 +136,14 @@ class BaseModel(nn.Module):
                 y = y.to(self.device)
 
                 # train a batch
+                with torch.autocast(device_type=self.device, dtype=self._precision):
+                    pred_y = self((X_midi, X_wave))
+                    loss = self._loss_fn(pred_y, y)
+
+                self.__scaler.scale(loss).backward()
+                self.__scaler.step(self._optim)
+                self.__scaler.update()
                 self._optim.zero_grad()
-                pred_y = self((X_midi, X_wave))
-                loss = self._loss_fn(pred_y, y)
-                loss.backward()
-                self._optim.step()
 
                 # log for the statistics
                 self._writer.add_scalar("Train/loss", loss.item(), self._sample_position)
@@ -166,6 +173,7 @@ class BaseModel(nn.Module):
     def predict(self, midi) -> List:
         # move the input onto the same device as the model is on
         midi = midi.to(self.device)
+        midi = torch.unsqueeze(midi, 0)
 
         # calculating a gradient is not needed, disable that to improve performance
         with torch.no_grad():
