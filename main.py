@@ -100,15 +100,13 @@ def load_mode():
     root_folder = model.log_path
 
     # use the loaded model to predict a waveform
-    # TODO: optimize prediction, batch prediction?
+    # FIXME: error in batch prediction?
     wave = []
     for X, y in tqdm(dataloader):
         X_midi, _ = X
-        batch_size, _, _ = X_midi.shape
-        for sample in range(batch_size):
-            window = model.predict(X_midi[sample])
-            for sample in window:
-                wave.append(sample)
+        window = model.predict(X_midi)
+        for sample in window:
+            wave.append(sample)
 
     wave = np.array(wave)
     print(wave, wave.shape)
@@ -136,6 +134,10 @@ if __name__ == "__main__":
         dataloader = prepare_dataset()
         for X, y in tqdm(dataloader):
             pass
+
+        for X, y in tqdm(dataloader.dataset):
+            pass
+
         quit()
 
     if args.load_only:

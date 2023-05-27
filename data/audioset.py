@@ -31,28 +31,21 @@ class AudioDataset(Dataset):
         
         # read the waveform and get the sample rate
         self._metadata = torchaudio.info(f"{self.__root_dir}/output.wav")
-        self.__wave, self.__sample_rate = torchaudio.load(f"{self.__root_dir}/output.wav")
-        self.__wave = np.array(self.__wave.T.numpy(), dtype=self.__precision)
-        assert len(self.__wave) <= MAX_DATASET_SAMPLE_SIZE, f"Dataset too big with {len(self.__wave)} samples."
+        self._wave, self.__sample_rate = torchaudio.load(f"{self.__root_dir}/output.wav")
+        self._wave = np.array(self._wave.T.numpy(), dtype=self.__precision)
+        assert len(self._wave) <= MAX_DATASET_SAMPLE_SIZE, f"Dataset too big with {len(self._wave)} samples."
 
         # normalize dataset
         if normalize:
             minmax = MinMaxScaler()
-            self.__wave = minmax.fit_transform(self.__wave)
+            self._wave = minmax.fit_transform(self._wave)
             print(f"Dataset boundaries: [{minmax.data_min_};  {minmax.data_max_}]")
 
         # read the midi file such that an arbitary index of it can be returned later on
         self._midi_file = MidiFile(f"{self.__root_dir}/input.mid")
 
         # store the midi notes as hot-encoded vector of booleans
-        self._midi = np.zeros((len(self.__wave), self._dimension), dtype=np.bool_)
-
-        # calculate max time of midi file
-        max_time = 0
-        for msg in self._midi_file.tracks[-1]:
-            if "note" in msg.dict().keys():
-                max_time += msg.time
-        time_factor = self._metadata.num_frames / max_time
+        self._midi = np.zeros((len(self._wave), self._dimension), dtype=np.bool_)
 
         # create array
         for i, msg in enumerate(self._midi_file.tracks[-1]):
@@ -87,7 +80,7 @@ class AudioDataset(Dataset):
 
     def __len__(self) -> int:
         # there are no samples outside the waveform
-        return len(self.__wave) - (self.__n_future + self.__n_prev)
+        return len(self._wave) - (self.__n_future + self.__n_prev)
         
     def __getitem__(self, index) -> Tuple[Tuple[np.array, np.array], np.array]:
         """Returns midi, wave and label in the form:
@@ -109,12 +102,12 @@ class AudioDataset(Dataset):
         #   wave:   [t-5, t-4, t-3, t-2, t-1]
         #   sample: [t]
 
+        # slow, since slicing creates a new array
         midi = self._midi[index:index + self.__n_prev + self.__n_future]
-        wave = self.__wave[index:index + self.__n_prev]
-        y = self.__wave[index + self.__n_prev]
+        wave = self._wave[index:index + self.__n_prev]
+        y = self._wave[index + self.__n_prev]
 
-        return (np.array(midi, dtype=self.__precision), np.array(wave, dtype=self.__precision)), \
-                np.array(y, dtype=self.__precision)
+        return (np.array(midi, dtype=self.__precision), wave), y
 
 
 # test the dataset

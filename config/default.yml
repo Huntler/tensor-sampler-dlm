@@ -26,6 +26,6 @@ dataset:
 
   # dataloader specific arguments
   loader:
-    batch_size: 128
+    batch_size: 1024
     shuffle: True
-    num_workers: 4
+    num_workers: 8
