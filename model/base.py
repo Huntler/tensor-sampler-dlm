@@ -43,7 +43,6 @@ class BaseModel(nn.Module):
         # define parameters for sound generation, such as output channel size and
         # input buffer from previous wave form
         self._n_channels = 2
-        self._cache = None
 
         # the following is needed to avoid zero gradients in mixed precision
         self._precision = precision
@@ -66,13 +65,12 @@ class BaseModel(nn.Module):
         return self.__device
 
     def use_device(self, device: str) -> None:
-        """Moves the network and cache storage to the specified device.
+        """Moves the network storage to the specified device.
 
         Args:
             device (str): Device should be supported by PyTorch e.g. 'cpu', 'cuda', 'mps', ...
         """
         self.__device = device
-        self._cache = self._cache.to(self.device)
         self.to(self.device)
 
     def save_to_default(self) -> None:
@@ -132,12 +130,12 @@ class BaseModel(nn.Module):
         for e in range(epochs):
             for X, y in dataloader:
                 # move samples/batch to train onto the specified device
-                X_midi, X_wave = X[0].to(self.device), X[1].to(self.device)
+                X = X.to(self.device)
                 y = y.to(self.device)
 
                 # train a batch
                 with torch.autocast(device_type=self.device, dtype=self._precision):
-                    pred_y = self((X_midi, X_wave))
+                    pred_y = self(X)
                     loss = self._loss_fn(pred_y, y)
 
                 self.__scaler.scale(loss).backward()
@@ -147,14 +145,14 @@ class BaseModel(nn.Module):
 
                 # log for the statistics
                 self._writer.add_scalar("Train/loss", loss.item(), self._sample_position)
-                self._sample_position += len(X[0])
+                self._sample_position += len(X)
 
                 # print the progress bar showing the trainings progress
                 if not p_bar:
-                    total_iters *= len(X[0])
+                    total_iters *= len(X)
                     p_bar = tqdm(total=total_iters)
 
-                p_bar.update(len(X[0]))
+                p_bar.update(len(X))
                 self._writer.flush()
             
             # save the model every x epochs if wanted, value has to be above 0
@@ -170,21 +168,15 @@ class BaseModel(nn.Module):
         self.eval()
         self._writer.flush()
 
-    def predict(self, midi) -> List:
+    def predict(self, X) -> List:
+        self.eval()
+
         # move the input onto the same device as the model is on
-        midi = midi.to(self.device)
-        midi = torch.unsqueeze(midi, 0)
+        X = X.to(self.device)
 
-        # calculating a gradient is not needed, disable that to improve performance
-        with torch.no_grad():
-            # send the cache and midi input to the network
-            _cache = torch.unsqueeze(self._cache, 0)
-            sample = self((midi, _cache))
-            sequence = len(sample)
-
-            # update the cache based on the prediction
-            self._cache = torch.roll(self._cache, -sequence)
-            self._cache[-sequence, :] = sample
+        # interactions with autograd not needed, disable that to improve performance
+        with torch.inference_mode():
+            sample = self(X)
 
         # always move the sample to cpu and return it
         return sample.detach().cpu().numpy()

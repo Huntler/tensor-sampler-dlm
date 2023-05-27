@@ -34,13 +34,14 @@ def prepare_dataset() -> DataLoader:
     return dataloader
 
 
-def prepare_model() -> BaseModel:
+def prepare_model(sequence_length, channels) -> BaseModel:
     # get the related configuration
     model_dict = deepcopy(config_dict)
     model_name = model_dict["model"]["name"]
-    model_dict["model"]["cache_size"] = model_dict["prev_samples"]
     model_dict["model"]["log"] = model_dict["log"]
     model_dict["precision"] = np.float16 if config_dict["device"] == "cuda" else np.float32
+    model_dict["model"]["sequence_length"] = sequence_length
+    model_dict["model"]["channels"] = channels
     del model_dict["model"]["name"]
     del model_dict["model"]["train"]
 
@@ -55,6 +56,7 @@ def prepare_model() -> BaseModel:
         to_store = deepcopy(config_dict)
         to_store["log"] = False
         to_store["evaluation"] = model.log_path
+        model_dict["evaluation"] = model.log_path
         to_store["device"] = "cpu"
         config.store_args(f"{model.log_path}/config.yml", to_store)
     
@@ -83,7 +85,7 @@ def train_mode():
     train_dict = config_dict["model"]["train"]
 
     dataloader = prepare_dataset()
-    model = prepare_model()
+    model = prepare_model(dataloader.dataset.sequence_length, dataloader.dataset.channels)
 
     model.train_on(dataloader, **train_dict)
     model.save_to_default()
@@ -96,19 +98,17 @@ def load_mode():
     
     # prepare the dataset and model
     dataloader = prepare_dataset()
-    model = prepare_model()
+    model = prepare_model(dataloader.dataset.sequence_length, dataloader.dataset.channels)
     root_folder = model.log_path
 
     # use the loaded model to predict a waveform
-    # FIXME: error in batch prediction?
-    wave = []
+    # FIXME: Prediction speed much slower than training, difference to training: model loaded on CPU instead of GPU
+    wave = np.zeros((1, 2))
     for X, y in tqdm(dataloader):
-        X_midi, _ = X
-        window = model.predict(X_midi)
-        for sample in window:
-            wave.append(sample)
+        window = model.predict(X)
+        window = dataloader.dataset.convert(window)
+        wave = np.append(wave, window, axis=0)
 
-    wave = np.array(wave)
     print(wave, wave.shape)
     scipy.io.wavfile.write(f"{root_folder}/output.wav", 44100, wave)
 

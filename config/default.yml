@@ -6,26 +6,27 @@ log: True
 evaluation:
 
 # model and dataset depends on those parameters
-prev_samples: 1024
-future_samples: 128
+prev_samples: 100
+future_samples: 4
 
 # specify model arguments
 model:
-  tag: LSTM/1024-128
-  name: LstmModel
+  tag: CNN/100-4
+  name: CnnModel
 
   # arguments used for training the model
   train:
-    epochs: 5
+    epochs: 8
     save_every: 1
 
 # specify dataset arguments
 dataset: 
   name: train_0
-  normalize: True
+  normalize: False
 
   # dataloader specific arguments
   loader:
-    batch_size: 1024
+    batch_size: 4096
     shuffle: True
     num_workers: 8
+    pin_memory: True

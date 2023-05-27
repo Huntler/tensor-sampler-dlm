@@ -36,47 +36,33 @@ class AudioDataset(Dataset):
         assert len(self._wave) <= MAX_DATASET_SAMPLE_SIZE, f"Dataset too big with {len(self._wave)} samples."
 
         # normalize dataset
+        self._normalizer = None
         if normalize:
-            minmax = MinMaxScaler()
-            self._wave = minmax.fit_transform(self._wave)
-            print(f"Dataset boundaries: [{minmax.data_min_};  {minmax.data_max_}]")
-
-        # read the midi file such that an arbitary index of it can be returned later on
-        self._midi_file = MidiFile(f"{self.__root_dir}/input.mid")
-
-        # store the midi notes as hot-encoded vector of booleans
-        self._midi = np.zeros((len(self._wave), self._dimension), dtype=np.bool_)
-
-        # create array
-        for i, msg in enumerate(self._midi_file.tracks[-1]):
-            # we are only interested in messages containing a note
-            if "note_off" in msg.type:
-                note_index = msg.note - self._note_offset
-
-                # we found the note_off command, now add this note to the array until we find the start
-                for j in range(i, 0, -1):
-                    # self._midi[j] += self.__one_hot(note_index, 1)
-                    old_msg = self._midi_file.tracks[-1][j]
-                    if old_msg.type != "note_on":
-                        continue
-
-                    # start of command found, add the one-hot encoded vector old_msg.time times
-                    if old_msg.note - self._note_offset == note_index:
-                        for sample in range(0, msg.time):
-                            self._midi[j + sample] += self.__one_hot(note_index, 1)
-
-    def __one_hot(self, index: int, value: int, tensor: bool = False) -> torch.tensor:
-        one_hot = np.zeros((self._dimension), dtype=np.uint8)
-        one_hot[index] = value
-        return np.array(one_hot, dtype=np.bool_)
+            self._normalizer = MinMaxScaler()
+            self._wave = self._normalizer.fit_transform(self._wave)
+            print(f"Dataset boundaries: [{self._normalizer.data_min_};  {self._normalizer.data_max_}]")
 
     @property
     def dimension(self) -> int:
         return self._dimension
     
     @property
+    def channels(self) -> int:
+        return self._wave.shape[-1]
+    
+    @property
+    def sequence_length(self) -> int:
+        return self.__n_prev + self.__n_future
+    
+    @property
     def sample_rate(self) -> int:
         return self.__sample_rate
+    
+    def convert(self, X: np.array) -> np.array:
+        if self._normalizer is None:
+            return X
+        
+        return self._normalizer.inverse_transform(X)
 
     def __len__(self) -> int:
         # there are no samples outside the waveform
@@ -95,19 +81,17 @@ class AudioDataset(Dataset):
             index (_type_): The current index of the dataset
 
         Returns:
-            Tuple[Tuple[np.array, np.array], np.array]: The samples (midi, wave) and label.
+            Tuple[np.array, np.array]: The samples wave and label.
         """
         # example, n_prev=5 and n_future=3:
-        #   midi:   [t-5, t-4, t-3, t-2, t-1, t, t+1, t+2]
-        #   wave:   [t-5, t-4, t-3, t-2, t-1]
+        #   wave:   [t-5, t-4, t-3, t-2, t-1, t, t+1, t+2]
         #   sample: [t]
 
         # slow, since slicing creates a new array
-        midi = self._midi[index:index + self.__n_prev + self.__n_future]
-        wave = self._wave[index:index + self.__n_prev]
+        wave = self._wave[index:index + self.__n_prev + self.__n_future]
         y = self._wave[index + self.__n_prev]
 
-        return (np.array(midi, dtype=self.__precision), wave), y
+        return wave, y
 
 
 # test the dataset
@@ -121,9 +105,8 @@ if __name__ == "__main__":
     )
 
     for X, y in tqdm(dataset):
-        X_midi, X_wave = X
 
-        print(np.argmax(X_midi, axis=-1))
-        print(X_wave)
+        print(np.argmax(X, axis=-1))
+        print(X)
         print(y)
         input("Enter to continue >")

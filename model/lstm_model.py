@@ -9,8 +9,9 @@ from torch.optim.lr_scheduler import ExponentialLR
 
 
 class LstmModel(BaseModel):
-    def __init__(self, tag: str, channels: int = 2, lr: float = 1e-3, lr_decay: float = 9e-1, 
-                 adam_betas: List[float] = [9e-1, 999e-3], cache_size: int = 1,
+    def __init__(self, tag: str, lr: float = 1e-3, lr_decay: float = 9e-1, 
+                 adam_betas: List[float] = [9e-1, 999e-3],
+                 sequence_length: int = 1, channels: int = 2,
                  log: bool = True, precision: torch.dtype = torch.float32) -> None:
         # initialize components using the parent class
         super(LstmModel, self).__init__(tag, log, precision)
@@ -18,22 +19,13 @@ class LstmModel(BaseModel):
         # define hyperparameters for the network itself
         self.__channels = channels
 
-        self.__net_midi = nn.Sequential(
-            nn.Conv1d(1024+128, 1024+64, 10, 1),
-            nn.BatchNorm1d(1024+64),
-            nn.Tanh(),
-            nn.Conv1d(1024+64, 1024, 5, 1),
-            nn.BatchNorm1d(1024),
-            nn.Tanh()
-        )
-
         self.__net_wave = nn.Sequential(
             nn.Linear(2, 8),
             nn.LeakyReLU(),
             nn.Linear(8, 16)
         )
 
-        self.__lstm = nn.LSTM(93, 128, num_layers=2, bidirectional=False, batch_first=True)
+        self.__lstm = nn.LSTM(16, 128, num_layers=2, bidirectional=False, batch_first=True)
         self.__reduction = nn.Sequential(
             nn.Flatten(),
             nn.Linear(128, 96),
@@ -49,7 +41,6 @@ class LstmModel(BaseModel):
         self._loss_fn = torch.nn.L1Loss()
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
-        self._cache = torch.zeros((cache_size, 2), dtype=self._precision)
     
     def load(self, path) -> None:
         """Loads the model's parameter given a path
@@ -58,19 +49,14 @@ class LstmModel(BaseModel):
         self.eval()
 
     def forward(self, x) -> torch.tensor:
-        x_midi, x_wave = x
-        batch_size, midi_seq, midi_f = x_midi.shape
-        batch_size, wave_seq, wave_f = x_wave.shape
+        batch_size, wave_seq, wave_f = x.shape
 
-        # extract features of midi/wave input
-        x_midi = self.__net_midi(x_midi)
+        # extract features of wave input
+        x = x.view(-1, wave_f)
+        x = self.__net_wave(x)
+        x = x.view(batch_size, wave_seq, 16)
 
-        x_wave = x_wave.view(-1, wave_f)
-        x_wave = self.__net_wave(x_wave)
-        x_wave = x_wave.view(batch_size, wave_seq, 16)
-
-        # concatenate both LSTM outputs and reduce their dimension
-        x = torch.concat((x_midi, x_wave), dim=-1)
+        # pass wave through lst,
         x, (h, c) = self.__lstm(x)
         x = h[0]
 
