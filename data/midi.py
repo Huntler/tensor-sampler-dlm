@@ -140,6 +140,6 @@ if __name__ == "__main__":
         output_sequence=256
         )
 
-    trainloader = DataLoader(dataset, batch_size=32, num_workers=0, shuffle=True)
+    trainloader = DataLoader(dataset, batch_size=32, num_workers=8, shuffle=True)
     for data in tqdm(trainloader):
         X, y = data

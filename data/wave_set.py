@@ -46,12 +46,12 @@ if __name__ == '__main__':
     freeze_support()
     
     dataset = WaveDataset(
-        root_dir="./dataset/train_0",
+        root_dir="data/dataset/train_0",
         sequence_length=128,
         device="cpu",
         precision=torch.float16
         )
 
-    trainloader = DataLoader(dataset, batch_size=32, num_workers=4, shuffle=True)
+    trainloader = DataLoader(dataset, batch_size=32, num_workers=8, shuffle=True)
     for data in tqdm(trainloader):
         X, y = data

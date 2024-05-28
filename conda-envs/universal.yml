@@ -13,4 +13,4 @@ dependencies:
         - mido
         - tensorboard
         - torch
-        - torchaudio
+        - torchaudio==2.0.1
