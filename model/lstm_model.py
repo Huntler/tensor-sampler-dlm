@@ -47,9 +47,13 @@ class LstmModel(BaseModel):
         )
 
         # define loss function, optimizer and scheduler for the learning rate
-        self._loss_fn = torch.nn.L1Loss()
+        self._loss_fn = torch.nn.MSELoss()
         self._optim = torch.optim.AdamW(self.parameters(), lr=lr, betas=adam_betas)
         self._scheduler = ExponentialLR(self._optim, gamma=lr_decay)
+
+    def use_cache(self, batch_size: int) -> None:
+        self._cache = np.zeros((batch_size, self.__in_seq_len, self.__channels), dtype=np.float32)
+        self._cache = torch.tensor(self._cache)
     
     def load(self, path) -> None:
         """Loads the model's parameter given a path
@@ -79,3 +83,16 @@ class LstmModel(BaseModel):
         x = x.view(batch_size, self.__out_seq_len, self.__channels)
 
         return x
+
+    def predict(self, midi) -> List:
+        if self._cache == None:
+            batch_size, _, _ = midi.shape
+            self.use_cache(batch_size)
+        
+        with torch.no_grad():
+            sample = self((midi, self._cache))
+
+            self._cache = torch.roll(self._cache, -self.__out_seq_len, 0)
+            self._cache[:, -self.__out_seq_len:, :] = sample
+
+        return sample.numpy()
