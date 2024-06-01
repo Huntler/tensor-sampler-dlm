@@ -2,17 +2,20 @@ name: vst-plugin
 channels:
   - pytorch
   - conda-forge
+  - nvidia
   - defaults
 dependencies:
     - python=3.10
-    - cudatoolkit=11.6
+    - pytorch-cuda=12.1
     - pyyaml
     - scikit-learn
     - scipy
     - matplotlib
     - tqdm
+    - pytorch=2.3.0
+    - torchaudio
+    - tensorboard
+    - ffmpeg<7
     - pip:
         - mido
-        - tensorboard
-        - torch
-        - torchaudio
+        - pysoundfile
