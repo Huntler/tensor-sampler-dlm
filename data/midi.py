@@ -24,9 +24,9 @@ class MidiWaveDataset(Dataset):
         self._root_dir = f"data/dataset/{name}"
 
         # read the wave form
-        self._metadata = torchaudio.info(f"{self._root_dir}/output.wav")
+        self._metadata = torchaudio.info(f"{self._root_dir}/output.wav", backend="ffmpeg")
         self._wave, self._sample_rate = torchaudio.load(
-            self._root_dir + "/output.wav")
+            self._root_dir + "/output.wav", backend="ffmpeg")
         self._wave = self._wave.T.numpy()
         self._wave = np.array(self._wave, dtype=self._precision)
         assert self._metadata.num_frames == len(self._wave)
