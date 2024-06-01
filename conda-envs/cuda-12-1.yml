@@ -19,3 +19,4 @@ dependencies:
     - pip:
         - mido
         - pysoundfile
+        - git+https://github.com/Huntler/TimeSeriesDL.git

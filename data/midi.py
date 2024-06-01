@@ -4,10 +4,11 @@ from torch.utils.data import Dataset
 import torchaudio
 import numpy as np
 from mido import MidiFile
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler
 from warnings import warn
 
 
+@DeprecationWarning
 class MidiWaveDataset(Dataset):
     def __init__(self, name: str, dimension: int = 90, note_offset: int = 0,
                  prev_samples: int = 500, future_samples: int = 500, 
