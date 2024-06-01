@@ -88,30 +88,36 @@ class BaseModel(nn.Module):
         """
         assert self._loss_fn != None
         assert self._optim != None
+        assert isinstance(dataloader, DataLoader)
 
         total_iters = epochs * len(dataloader)
         p_bar = None
 
         self.train()
         for e in range(epochs):
-            for X, y in dataloader:
-                # train a batch
-                self._optim.zero_grad()
-                pred_y = self(X)
+            for (midiX, waveX), y in dataloader:
+                # train a batch                
+                midiX = midiX.to(self._device)
+                waveX = waveX.to(self._device)
+                y = y.to(self._device)
+
+                pred_y = self((midiX, waveX))
                 loss = self._loss_fn(pred_y, y)
+
+                self._optim.zero_grad()
                 loss.backward()
                 self._optim.step()
 
                 # log for the statistics
                 self._writer.add_scalar("Train/loss", loss.item(), self._sample_position)
-                self._sample_position += len(X[0])
+                self._sample_position += len(midiX)
 
                 # print some gui
                 if not p_bar:
-                    total_iters *= len(X[0])
+                    total_iters *= len(midiX)
                     p_bar = tqdm(total=total_iters)
 
-                p_bar.update(len(X[0]))
+                p_bar.update(len(midiX))
                 self._writer.flush()
             
             if save_every and e % save_every == 0:
