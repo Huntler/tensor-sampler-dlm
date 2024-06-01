@@ -88,16 +88,19 @@ def train_mode():
 
 
 def load_mode():
+    config_dict["dataset"]["loader"]["shuffle"] = False
+    #config_dict["dataset"]["loader"]["batch_size"] = 1
     dataloader = prepare_dataset()
     model = prepare_model()
-    root_folder = model.log_path
+    model.use_device("cpu")
+    root_folder = config_dict["evaluation"]
 
     # predict the waveform
     wave = []
-    for notes_active, _ in tqdm(dataloader):
+    for (notes_active, _), _ in tqdm(dataloader):
         window = model.predict(notes_active)
         for sample in window:
-            wave.append(sample)
+            wave += list(sample)
 
     wave = np.array(wave).T
     print(wave, wave.shape)
