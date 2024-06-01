@@ -1,17 +1,18 @@
 """Pipeline using ConvAE and LSTM."""
 from torch.utils.data import DataLoader
 from TimeSeriesDL.model import BaseModel
-from TimeSeriesDL.data import encode_dataset
+from TimeSeriesDL.data import AutoEncoderCollate
 from TimeSeriesDL.model import ConvAE, LSTM
 from TimeSeriesDL.utils import config
 
 from data import AudioDataset
 
-def train(path: str) -> BaseModel:
+def train(path: str, conv_ae: ConvAE = None) -> BaseModel:
     """Trains based on a given config.
 
     Args:
         path (str): The path to a train config.
+        conv_ae (ConvAE): A trained ConvAE to use with a dataset wrapper.
 
     Returns:
         BaseModel: The trained model.
@@ -22,6 +23,9 @@ def train(path: str) -> BaseModel:
     # create a dataset loader which loads a matplotlib matrix from ./train.mat
     data = AudioDataset(**train_args["dataset"])
     dataloader = DataLoader(data, **train_args["dataloader"])
+    if conv_ae:
+        aew = AutoEncoderCollate(conv_ae, device="cuda")
+        dataloader = DataLoader(data, collate_fn=aew.collate_fn(), **train_args["dataloader"])
 
     # create a model based on what is defined in the config
     # to do so, a model needs to be registered using config.register_model()
@@ -47,13 +51,6 @@ if __name__ == "__main__":
     print("Train the ConvAE")
     ae: ConvAE = train("./config/ae.yml")
 
-    print("\nEncode dataset")
-    config_args = config.get_args(ae.log_path + "/config.yml")
-    d_type = config_args["dataset"]["d_type"]
-    encode_dataset(config_args,
-                   export_path=f"data/dataset/{d_type}/encoded.mat",
-                   dataset_class=AudioDataset)
-
     # train the lstm on the encoded dataset, then decode: ae.decode(lstm.predict(x))
     print("\nTrain LSTM")
-    lstm: LSTM = train("./examples/lstm_and_ae/lstm_config.yaml")
+    lstm: LSTM = train("./config/lstm.yml", ae)
